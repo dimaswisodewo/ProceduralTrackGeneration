@@ -462,7 +462,7 @@ MonoBehaviour:
   height: 12
   lookAtOffset: {x: 0, y: 1, z: 0}
   positionDamping: 5
-  rotationDamping: 15
+  rotationDamping: 12
   enableSpeedFOV: 1
   minFOV: 60
   maxFOV: 78
@@ -614,7 +614,7 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize2D: {x: 10, y: 10}
   m_Shadows:
-    m_Type: 2
+    m_Type: 1
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -1053,9 +1053,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b06ba18d510246e68648d176c2c918e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapGenerator
-  numberOfNodes: 200
-  numberOfSpots: 2
+  numberOfNodes: 150
+  numberOfSpots: 7
   mapSize: {x: 200, y: 200}
+  cellSize: 4
   straightPrefab: {fileID: 3998984614176541144, guid: 39d3951d82d1541d78bbbd7bb07319b6, type: 3}
   turnPrefab: {fileID: 3034595356720907573, guid: dcfed03d678704f59936e099ddbb5f4d, type: 3}
   tJunctionPrefab: {fileID: 6973336388694525743, guid: 14dcf22cbb62a466e92d7f078a3a9100, type: 3}
@@ -1063,7 +1064,7 @@ MonoBehaviour:
   spotPrefab: {fileID: 0}
   generateBuildings: 1
   minBuildingHeight: 1
-  maxBuildingHeight: 2
+  maxBuildingHeight: 4
 --- !u!1 &1678229141
 GameObject:
   m_ObjectHideFlags: 0

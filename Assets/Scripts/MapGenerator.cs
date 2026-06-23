@@ -6,6 +6,7 @@ public class MapGenerator : MonoBehaviour {
     public int numberOfNodes = 200;
     public int numberOfSpots = 10;
     public Vector2 mapSize = new Vector2(200, 200);
+    public float cellSize = 3f;
 
     [Header("Prefabs")]
     public GameObject straightPrefab;
@@ -64,11 +65,11 @@ public class MapGenerator : MonoBehaviour {
     }
 
     void Start() {
-        // Grid setup: 2x2 cells
-        minX = Mathf.RoundToInt(-mapSize.x / 4f);
-        maxX = Mathf.RoundToInt(mapSize.x / 4f);
-        minZ = Mathf.RoundToInt(-mapSize.y / 4f);
-        maxZ = Mathf.RoundToInt(mapSize.y / 4f);
+        // Grid setup based on cell size
+        minX = Mathf.RoundToInt(-mapSize.x / (cellSize * 2f));
+        maxX = Mathf.RoundToInt(mapSize.x / (cellSize * 2f));
+        minZ = Mathf.RoundToInt(-mapSize.y / (cellSize * 2f));
+        maxZ = Mathf.RoundToInt(mapSize.y / (cellSize * 2f));
 
         spawnedDeliverySpots.Clear();
 
@@ -150,7 +151,7 @@ public class MapGenerator : MonoBehaviour {
             if (!found) continue;
 
             occupied.Add(pos);
-            Vector3 worldPos = new Vector3(pos.x * 2f, 0f, pos.z * 2f);
+            Vector3 worldPos = new Vector3(pos.x * cellSize, 0f, pos.z * cellSize);
             nodes.Add(new RoadNode(worldPos));
         }
     }
@@ -320,8 +321,8 @@ public class MapGenerator : MonoBehaviour {
 
     GridPos GetGridCoords(Vector3 worldPos) {
         return new GridPos(
-            Mathf.RoundToInt(worldPos.x / 2f),
-            Mathf.RoundToInt(worldPos.z / 2f)
+            Mathf.RoundToInt(worldPos.x / cellSize),
+            Mathf.RoundToInt(worldPos.z / cellSize)
         );
     }
 
@@ -485,11 +486,14 @@ public class MapGenerator : MonoBehaviour {
         // Generate and connect the customizable spots
         GenerateAndConnectSpots();
 
+        // Spawn a single large ground plane covering the whole area
+        SpawnGroundPlane();
+
         // 2. Instantiate prefabs
         for (int gx = minX; gx <= maxX; gx++) {
             for (int gz = minZ; gz <= maxZ; gz++) {
                 GridPos current = new GridPos(gx, gz);
-                Vector3 position = new Vector3(gx * 2f, 0f, gz * 2f);
+                Vector3 position = new Vector3(gx * cellSize, 0f, gz * cellSize);
 
                 if (spotCells.Contains(current)) {
                     // Check orthogonal neighbors for road cells to orient the spot
@@ -522,12 +526,10 @@ public class MapGenerator : MonoBehaviour {
                     }
                     SpawnRoadPiece(current, position, validNeighbors);
                 } else {
-                    // Fill empty space with Buildings or Filler fallback
+                    // Fill empty space with Buildings
                     if (generateBuildings) {
                         bool adjacentToRoad = IsAdjacentToRoad(gx, gz);
                         SpawnBuilding(position, adjacentToRoad);
-                    } else if (fillerPrefab != null) {
-                        Instantiate(fillerPrefab, position, Quaternion.identity, transform);
                     }
                 }
             }
@@ -630,7 +632,8 @@ public class MapGenerator : MonoBehaviour {
 
         if (prefabToSpawn != null) {
             GameObject spawned = Instantiate(prefabToSpawn, position, Quaternion.Euler(0f, yRotation, 0f), transform);
-            spawned.transform.localScale = localScale;
+            float scaleFactor = cellSize / 2f;
+            spawned.transform.localScale = new Vector3(localScale.x * scaleFactor, localScale.y, localScale.z * scaleFactor);
             
             // If the piece has a RoadPiece component, we can initialize its fields if needed
             RoadPiece roadPiece = spawned.GetComponent<RoadPiece>();
@@ -787,14 +790,9 @@ public class MapGenerator : MonoBehaviour {
         GameObject spawnedSpotObj = null;
 
         if (spotPrefab == null) {
-            // Spawn a flat ground plane (filler) underneath the spot
-            if (fillerPrefab != null) {
-                Instantiate(fillerPrefab, position, Quaternion.identity, transform);
-            }
-            
             // Spawn a small default cube as a placeholder spot destination
             spawnedSpotObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            spawnedSpotObj.transform.position = position + new Vector3(0f, 0.5f, 0f); // Center and sit on the filler plane
+            spawnedSpotObj.transform.position = position + new Vector3(0f, 0.5f, 0f); // Center and sit on the ground plane
             spawnedSpotObj.transform.localScale = new Vector3(1f, 1f, 1f);
             spawnedSpotObj.transform.parent = transform;
             spawnedSpotObj.name = $"SpotPlaceholder_{current.x}_{current.z}";
@@ -816,12 +814,35 @@ public class MapGenerator : MonoBehaviour {
             }
 
             spawnedSpotObj = Instantiate(spotPrefab, position, Quaternion.Euler(0f, yRotation, 0f), transform);
+            float scaleFactor = cellSize / 2f;
+            spawnedSpotObj.transform.localScale = new Vector3(scaleFactor, 1f, scaleFactor);
         }
 
         if (spawnedSpotObj != null) {
             DeliverySpot spotComponent = spawnedSpotObj.AddComponent<DeliverySpot>();
             spawnedDeliverySpots.Add(spotComponent);
         }
+    }
+
+    void SpawnGroundPlane() {
+        if (fillerPrefab == null) return;
+
+        // Total grid size: (maxX - minX + 1) * cellSize by (maxZ - minZ + 1) * cellSize
+        float totalWidth = (maxX - minX + 1) * cellSize;
+        float totalLength = (maxZ - minZ + 1) * cellSize;
+
+        // Since the fillerPrefab at scale 1 has size 2 units, the scale required is:
+        float scaleX = totalWidth / 2f;
+        float scaleZ = totalLength / 2f;
+
+        // Calculate dynamic center
+        float centerX = (minX + maxX) * cellSize / 2f;
+        float centerZ = (minZ + maxZ) * cellSize / 2f;
+        Vector3 position = new Vector3(centerX, -0.01f, centerZ);
+
+        GameObject ground = Instantiate(fillerPrefab, position, Quaternion.identity, transform);
+        ground.name = "GroundPlane";
+        ground.transform.localScale = new Vector3(scaleX, 1f, scaleZ);
     }
 
     void InitializeBuildingMaterials() {
@@ -879,11 +900,6 @@ public class MapGenerator : MonoBehaviour {
     }
 
     void SpawnBuilding(Vector3 position, bool addCollider) {
-        // Spawn flat ground plane underneath the building
-        if (fillerPrefab != null) {
-            Instantiate(fillerPrefab, position, Quaternion.identity, transform);
-        }
-
         // Create parent building object
         GameObject buildingParent = new GameObject("Building_" + Mathf.RoundToInt(position.x) + "_" + Mathf.RoundToInt(position.z));
         buildingParent.transform.position = position;
@@ -895,8 +911,8 @@ public class MapGenerator : MonoBehaviour {
             : null;
 
         // Determine base dimensions (slightly less than 2x2 to avoid road overlap)
-        float baseWidth = Random.Range(1.4f, 1.8f);
-        float baseDepth = Random.Range(1.4f, 1.8f);
+        float baseWidth = Random.Range(0.7f * cellSize, 0.9f * cellSize);
+        float baseDepth = Random.Range(0.7f * cellSize, 0.9f * cellSize);
         float mainHeight = Random.Range(minBuildingHeight, maxBuildingHeight);
 
         // Add collider to building only if it is adjacent to the road for performance reasons

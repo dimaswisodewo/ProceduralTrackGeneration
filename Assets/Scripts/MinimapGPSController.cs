@@ -342,8 +342,9 @@ public class MinimapGPSController : MonoBehaviour {
         points.Add(carPathPos);
 
         // Add centers of each road cell
+        float cellSize = MapGenerator.Instance != null ? MapGenerator.Instance.cellSize : 2f;
         for (int i = 0; i < cellPath.Count; i++) {
-            Vector3 cellWorld = new Vector3(cellPath[i].x * 2f, pathHeightOffset, cellPath[i].z * 2f);
+            Vector3 cellWorld = new Vector3(cellPath[i].x * cellSize, pathHeightOffset, cellPath[i].z * cellSize);
             
             // Avoid adding cell point if it's extremely close to the car position to avoid jagged start line
             if (i == 0 && Vector3.Distance(carPathPos, cellWorld) < 1.0f) {
@@ -365,9 +366,10 @@ public class MinimapGPSController : MonoBehaviour {
     }
 
     private GridPos GetClosestRoadCell(Vector3 pos) {
+        float cellSize = MapGenerator.Instance != null ? MapGenerator.Instance.cellSize : 2f;
         GridPos snapped = new GridPos(
-            Mathf.RoundToInt(pos.x / 2f),
-            Mathf.RoundToInt(pos.z / 2f)
+            Mathf.RoundToInt(pos.x / cellSize),
+            Mathf.RoundToInt(pos.z / cellSize)
         );
 
         // If the snapped coordinate is directly a road cell, use it immediately
@@ -381,14 +383,14 @@ public class MinimapGPSController : MonoBehaviour {
         GridPos closest = snapped;
         float minD = float.MaxValue;
         foreach (var rc in roadCells) {
-            float d = Mathf.Abs(pos.x - rc.x * 2f) + Mathf.Abs(pos.z - rc.z * 2f);
+            float d = Mathf.Abs(pos.x - rc.x * cellSize) + Mathf.Abs(pos.z - rc.z * cellSize);
             if (d < minD) {
                 minD = d;
                 closest = rc;
             }
         }
         foreach (var sc in spotCells) {
-            float d = Mathf.Abs(pos.x - sc.x * 2f) + Mathf.Abs(pos.z - sc.z * 2f);
+            float d = Mathf.Abs(pos.x - sc.x * cellSize) + Mathf.Abs(pos.z - sc.z * cellSize);
             if (d < minD) {
                 minD = d;
                 closest = sc;

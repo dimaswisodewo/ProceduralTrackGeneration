@@ -193,13 +193,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84c8f0d5dccc64a43804b6a8e0fe4996, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CarController
-  driveType: 2
+  driveType: 0
   motorTorque: 900
-  maxSpeed: 7
+  maxSpeed: 6
   brakeForce: 3000
   handbrakeForce: 4000
   maxSteerAngle: 30
-  highSpeedSteerLimit: 5
+  highSpeedSteerLimit: 4
   minSteerRange: 0.3
   centerOfMassOffset: {x: 0, y: -0.6, z: 0.1}
   downforceCoefficient: 50
@@ -208,9 +208,6 @@ MonoBehaviour:
   handbrakeSidewaysStiffness: 0.35
   handbrakeForwardStiffness: 0.5
   driftRearSidewaysStiffness: 0.35
-  driftRearForwardStiffness: 0.85
-  driftFrontSidewaysStiffness: 0.9
-  driftFrontForwardStiffness: 1
   driftSteerLimitMultiplier: 1.3
   driftTorqueFactor: 1.25
   driftYawForce: 2.5
