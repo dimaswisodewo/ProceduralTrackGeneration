@@ -1,0 +1,84 @@
+using UnityEngine;
+
+public class DeliverySpot : MonoBehaviour {
+    public bool isDeliveryTarget = false;
+    public bool isPickupTarget = false;
+
+    private GameObject ringVisual;
+    private Material ringMaterial;
+
+    private void Start() {
+        // 1. Create a dedicated trigger collider for checking player arrival
+        // This avoids modifying any existing model colliders.
+        BoxCollider trigger = gameObject.AddComponent<BoxCollider>();
+        trigger.isTrigger = true;
+        trigger.size = new Vector3(3f, 3f, 3f);
+        trigger.center = new Vector3(0f, 1.5f, 0f);
+
+        // 2. Create the flat visual ring representing the zone
+        CreateVisualRing();
+    }
+
+    private void CreateVisualRing() {
+        // Create a flat cylinder to act as a landing pad/zone ring
+        ringVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        Destroy(ringVisual.GetComponent<Collider>()); // Visual only, remove physics
+
+        ringVisual.transform.parent = this.transform;
+        ringVisual.transform.localPosition = new Vector3(0f, 0.05f, 0f); // Hover slightly above ground
+        ringVisual.transform.localScale = new Vector3(3f, 0.02f, 3f); // Wide and flat
+        ringVisual.transform.localRotation = Quaternion.identity;
+        ringVisual.layer = 30; // Main Camera Only / Hide from Minimap
+
+        Renderer renderer = ringVisual.GetComponent<Renderer>();
+        if (renderer != null) {
+            // Find a shader. Sprites/Default is unlit and works perfectly across all pipelines (Built-in, URP).
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null) {
+                shader = Shader.Find("Universal Render Pipeline/Lit");
+            }
+            if (shader == null) {
+                shader = Shader.Find("Standard");
+            }
+
+            ringMaterial = new Material(shader);
+            renderer.sharedMaterial = ringMaterial;
+        }
+
+        UpdateVisuals();
+    }
+
+    public void SetAsTarget(bool isTarget, bool isPickup = false) {
+        isDeliveryTarget = isTarget && !isPickup;
+        isPickupTarget = isTarget && isPickup;
+        UpdateVisuals();
+    }
+
+    private void UpdateVisuals() {
+        if (ringMaterial == null) return;
+
+        Color targetColor;
+        if (isPickupTarget) {
+            // Glowing vibrant blue for package pickup
+            targetColor = new Color(0f, 0.5f, 1f, 0.4f);
+        } else if (isDeliveryTarget) {
+            // Glowing orange/yellow for delivery destination
+            targetColor = new Color(1f, 0.5f, 0f, 0.4f);
+        } else {
+            // Dim, semi-transparent grey for inactive spots
+            targetColor = new Color(0.5f, 0.5f, 0.5f, 0.08f);
+        }
+
+        ringMaterial.color = targetColor;
+    }
+
+    private void OnTriggerEnter(Collider other) {
+        // Find the CarController on the entering object or its parents
+        CarController car = other.GetComponentInParent<CarController>();
+        if (car != null) {
+            if (PackageDeliverySystem.Instance != null) {
+                PackageDeliverySystem.Instance.OnCarEnteredSpot(this);
+            }
+        }
+    }
+}
