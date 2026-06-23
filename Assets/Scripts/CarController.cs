@@ -45,13 +45,10 @@ public class CarController : MonoBehaviour {
 
     [Header("Drift Settings")]
     public float driftRearSidewaysStiffness = 0.35f;
-    public float driftRearForwardStiffness = 0.85f;
-    public float driftFrontSidewaysStiffness = 0.9f;
-    public float driftFrontForwardStiffness = 1.0f;
     public float driftSteerLimitMultiplier = 1.3f;
     public float driftTorqueFactor = 1.25f;
     public float driftYawForce = 2.5f;
-    public float driftSteerHelper = 0.05f;
+    public float driftSteerHelper = 0.15f;
 
     [Header("Drift Boost Settings")]
     public float driftBoostLevel1Time = 0.6f;
@@ -283,7 +280,7 @@ public class CarController : MonoBehaviour {
         Vector3 localVelocityForDrift = transform.InverseTransformDirection(rb.linearVelocity);
 
         // Drift state logic: initiate drift if holding Shift, steering, grounded, and moving forward
-        bool canStartDrift = isGrounded && driftInput && Mathf.Abs(steering) > 0.15f && localVelocityForDrift.z > 3f;
+        bool canStartDrift = isGrounded && driftInput && Mathf.Abs(steering) > 0.1f && localVelocityForDrift.z > 2f;
         if (isDrifting) {
             // Maintain drift as long as shift is held and speed is reasonable and we are on ground
             if (!driftInput || !isGrounded || localVelocityForDrift.z < 1.5f) {
@@ -515,10 +512,12 @@ public class CarController : MonoBehaviour {
             SetWheelFriction(rearLeft.collider, handbrakeForwardStiffness, handbrakeSidewaysStiffness);
             SetWheelFriction(rearRight.collider, handbrakeForwardStiffness, handbrakeSidewaysStiffness);
         } else if (driftActive) {
-            SetWheelFriction(frontLeft.collider, driftFrontForwardStiffness, driftFrontSidewaysStiffness);
-            SetWheelFriction(frontRight.collider, driftFrontForwardStiffness, driftFrontSidewaysStiffness);
-            SetWheelFriction(rearLeft.collider, driftRearForwardStiffness, driftRearSidewaysStiffness);
-            SetWheelFriction(rearRight.collider, driftRearForwardStiffness, driftRearSidewaysStiffness);
+            // Front wheels keep original friction values
+            SetWheelFriction(frontLeft.collider, originalFrontLeftForward.stiffness, originalFrontLeftSideways.stiffness);
+            SetWheelFriction(frontRight.collider, originalFrontRightForward.stiffness, originalFrontRightSideways.stiffness);
+            // Rear wheels get reduced sideways stiffness but maintain forward drive/grip
+            SetWheelFriction(rearLeft.collider, originalRearLeftForward.stiffness, driftRearSidewaysStiffness);
+            SetWheelFriction(rearRight.collider, originalRearRightForward.stiffness, driftRearSidewaysStiffness);
         } else {
             RestoreAllFriction();
         }
