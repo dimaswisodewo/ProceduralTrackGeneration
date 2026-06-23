@@ -75,6 +75,7 @@ public class CarController : MonoBehaviour {
     private Material driftSparkMat0;
     private Material driftSparkMat1;
     private Material driftSparkMat2;
+    private Material redMaterialInstance;
 
     private WheelFrictionCurve originalFrontLeftSideways;
     private WheelFrictionCurve originalFrontRightSideways;
@@ -146,9 +147,7 @@ public class CarController : MonoBehaviour {
         }
 
         // Create custom materials for drift sparks
-        Shader sparkShader = Shader.Find("Universal Render Pipeline/Lit");
-        if (sparkShader == null) sparkShader = Shader.Find("Mobile/Diffuse");
-        if (sparkShader == null) sparkShader = Shader.Find("Standard");
+        Shader sparkShader = FindSparkShader();
 
         driftSparkMat0 = new Material(sparkShader);
         driftSparkMat0.color = new Color(0.9f, 0.65f, 1f); // Pastel Purple
@@ -190,7 +189,7 @@ public class CarController : MonoBehaviour {
             originalBodyScale = Vector3.one;
         }
 
-        // Make the car body red as requested
+        // Make the car body red as requested using a single shared material instance
         Renderer[] allRenderers = GetComponentsInChildren<Renderer>(true);
         HashSet<Transform> wheelTransforms = new HashSet<Transform>();
         if (frontLeft.mesh != null) wheelTransforms.Add(frontLeft.mesh);
@@ -211,10 +210,15 @@ public class CarController : MonoBehaviour {
                 t = t.parent;
             }
             if (!isWheel) {
-                Material mat = r.material; // Clones material
-                mat.color = redColor;
-                if (mat.HasProperty("_BaseColor")) {
-                    mat.SetColor("_BaseColor", redColor);
+                if (redMaterialInstance == null && r.sharedMaterial != null) {
+                    redMaterialInstance = new Material(r.sharedMaterial);
+                    redMaterialInstance.color = redColor;
+                    if (redMaterialInstance.HasProperty("_BaseColor")) {
+                        redMaterialInstance.SetColor("_BaseColor", redColor);
+                    }
+                }
+                if (redMaterialInstance != null) {
+                    r.sharedMaterial = redMaterialInstance;
                 }
             }
         }
@@ -815,9 +819,7 @@ public class CarController : MonoBehaviour {
             new Color(1f, 0.75f, 0.5f)   // Pastel Orange
         };
 
-        Shader sparkShader = Shader.Find("Universal Render Pipeline/Lit");
-        if (sparkShader == null) sparkShader = Shader.Find("Mobile/Diffuse");
-        if (sparkShader == null) sparkShader = Shader.Find("Standard");
+        Shader sparkShader = FindSparkShader();
 
         // Pre-create materials at startup to avoid runtime allocation
         poolMaterials = new Material[pastelColors.Length];
@@ -1017,5 +1019,35 @@ public class CarController : MonoBehaviour {
             carBodyVisual.localScale = originalBodyScale;
         }
         squashCoroutine = null;
+    }
+
+    private Shader FindSparkShader() {
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null) shader = Shader.Find("Mobile/Diffuse");
+        if (shader == null) shader = Shader.Find("Standard");
+        return shader;
+    }
+
+    private void OnDestroy() {
+        if (redMaterialInstance != null) {
+            Destroy(redMaterialInstance);
+        }
+        if (driftSparkMat0 != null) {
+            Destroy(driftSparkMat0);
+        }
+        if (driftSparkMat1 != null) {
+            Destroy(driftSparkMat1);
+        }
+        if (driftSparkMat2 != null) {
+            Destroy(driftSparkMat2);
+        }
+        if (poolMaterials != null) {
+            foreach (var mat in poolMaterials) {
+                if (mat != null) {
+                    Destroy(mat);
+                }
+            }
+            poolMaterials = null;
+        }
     }
 }

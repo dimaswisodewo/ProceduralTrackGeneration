@@ -81,4 +81,10 @@ public class DeliverySpot : MonoBehaviour {
             }
         }
     }
+
+    private void OnDestroy() {
+        if (ringMaterial != null) {
+            Destroy(ringMaterial);
+        }
+    }
 }

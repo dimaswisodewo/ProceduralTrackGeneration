@@ -369,6 +369,16 @@ public class MapGenerator : MonoBehaviour {
             openList.Remove(current);
             closedSet.Add(current);
 
+            // Optimization: Reconstruct the current path as a HashSet once per iteration
+            // to avoid re-constructing it in WouldCreate4WayIntersection for every neighbor.
+            HashSet<GridPos> currentPath = new HashSet<GridPos>();
+            GridPos temp = current;
+            currentPath.Add(temp);
+            while (cameFrom.ContainsKey(temp)) {
+                temp = cameFrom[temp];
+                currentPath.Add(temp);
+            }
+
             // Neighbors (orthogonal directions)
             GridPos[] neighbors = new GridPos[] {
                 new GridPos(current.x + 1, current.z),
@@ -383,7 +393,7 @@ public class MapGenerator : MonoBehaviour {
 
                 // CRITICAL: Reject the neighbor if traversing through it would create a 4-way intersection
                 // either at the neighbor cell itself or at any of its adjacent cells.
-                if (WouldCreate4WayIntersection(neighbor, current, cameFrom)) {
+                if (WouldCreate4WayIntersection(neighbor, currentPath)) {
                     continue;
                 }
 
@@ -408,21 +418,9 @@ public class MapGenerator : MonoBehaviour {
 
     /// <summary>
     /// Checks if adding a candidate neighbor cell to the road path would create a 4-way intersection.
-    /// It builds a tentative road layout by combining already finalized road cells and the current A* path,
-    /// then counts the orthogonal connections of the candidate cell and its neighbors.
+    /// It queries a tentative road layout by combining already finalized road cells and the pre-computed current path.
     /// </summary>
-    private bool WouldCreate4WayIntersection(GridPos neighbor, GridPos current, Dictionary<GridPos, GridPos> cameFrom) {
-        // Build the set of active cells: finalized road cells + tentative current path
-        HashSet<GridPos> active = new HashSet<GridPos>(roadCells);
-        active.Add(neighbor);
-        active.Add(current);
-        
-        GridPos temp = current;
-        while (cameFrom.ContainsKey(temp)) {
-            temp = cameFrom[temp];
-            active.Add(temp);
-        }
-
+    private bool WouldCreate4WayIntersection(GridPos neighbor, HashSet<GridPos> currentPath) {
         // Count connections at the candidate cell itself
         int neighborConnections = 0;
         GridPos[] orthogonalToNeighbor = new GridPos[] {
@@ -432,7 +430,7 @@ public class MapGenerator : MonoBehaviour {
             new GridPos(neighbor.x, neighbor.z - 1)
         };
         foreach (var n in orthogonalToNeighbor) {
-            if (active.Contains(n)) {
+            if (roadCells.Contains(n) || currentPath.Contains(n)) {
                 neighborConnections++;
             }
         }
@@ -442,7 +440,7 @@ public class MapGenerator : MonoBehaviour {
 
         // Count connections at neighbor's orthogonal neighbors to ensure they are not pushed to 4 connections
         foreach (var n in orthogonalToNeighbor) {
-            if (active.Contains(n)) {
+            if (roadCells.Contains(n) || currentPath.Contains(n)) {
                 int nConnections = 0;
                 GridPos[] orthogonalToN = new GridPos[] {
                     new GridPos(n.x + 1, n.z),
@@ -451,7 +449,7 @@ public class MapGenerator : MonoBehaviour {
                     new GridPos(n.x, n.z - 1)
                 };
                 foreach (var on in orthogonalToN) {
-                    if (active.Contains(on)) {
+                    if (roadCells.Contains(on) || currentPath.Contains(on) || on.Equals(neighbor)) {
                         nConnections++;
                     }
                 }
@@ -743,6 +741,15 @@ public class MapGenerator : MonoBehaviour {
             openList.Remove(current);
             closedSet.Add(current);
 
+            // Optimization: Reconstruct the current path as a HashSet once per iteration
+            HashSet<GridPos> currentPath = new HashSet<GridPos>();
+            GridPos tempVal = current;
+            currentPath.Add(tempVal);
+            while (cameFrom.ContainsKey(tempVal)) {
+                tempVal = cameFrom[tempVal];
+                currentPath.Add(tempVal);
+            }
+
             GridPos[] neighbors = new GridPos[] {
                 new GridPos(current.x + 1, current.z),
                 new GridPos(current.x - 1, current.z),
@@ -754,7 +761,7 @@ public class MapGenerator : MonoBehaviour {
                 if (closedSet.Contains(neighbor)) continue;
                 if (neighbor.x < minX || neighbor.x > maxX || neighbor.z < minZ || neighbor.z > maxZ) continue;
 
-                if (WouldCreate4WayIntersection(neighbor, current, cameFrom)) {
+                if (WouldCreate4WayIntersection(neighbor, currentPath)) {
                     continue;
                 }
 
@@ -818,7 +825,17 @@ public class MapGenerator : MonoBehaviour {
     }
 
     void InitializeBuildingMaterials() {
-        buildingMaterials.Clear();
+        if (buildingMaterials != null) {
+            foreach (var mat in buildingMaterials) {
+                if (mat != null) {
+                    Destroy(mat);
+                }
+            }
+            buildingMaterials.Clear();
+        } else {
+            buildingMaterials = new List<Material>();
+        }
+
         if (!generateBuildings) return;
 
         Shader buildingShader = Shader.Find("Universal Render Pipeline/Lit");
@@ -964,5 +981,16 @@ public class MapGenerator : MonoBehaviour {
             }
         }
         // Style C: Simple single tower (no extra blocks)
+    }
+
+    private void OnDestroy() {
+        if (buildingMaterials != null) {
+            foreach (var mat in buildingMaterials) {
+                if (mat != null) {
+                    Destroy(mat);
+                }
+            }
+            buildingMaterials.Clear();
+        }
     }
 }

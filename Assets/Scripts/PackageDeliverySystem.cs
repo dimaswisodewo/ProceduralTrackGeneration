@@ -47,6 +47,7 @@ public class PackageDeliverySystem : MonoBehaviour {
 
     // Navigation Arrow
     private GameObject pointerArrow;
+    private Material pointerArrowMaterial;
     private float warningHideTime = 0f;
     private float spawnTime;
 
@@ -125,6 +126,11 @@ public class PackageDeliverySystem : MonoBehaviour {
         MinimapGPSController gpsController = gameObject.GetComponent<MinimapGPSController>();
         if (gpsController == null) {
             gpsController = gameObject.AddComponent<MinimapGPSController>();
+        }
+
+        // Initialize pointer arrow if requested
+        if (show3DPointerArrow) {
+            CreatePointerArrow();
         }
 
         // 5. Enter start state
@@ -475,11 +481,11 @@ public class PackageDeliverySystem : MonoBehaviour {
         // Set materials
         Shader shader = Shader.Find("Sprites/Default");
         if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
-        Material mat = new Material(shader);
-        mat.color = new Color(1f, 0.85f, 0f, 1f); // Gold
+        pointerArrowMaterial = new Material(shader);
+        pointerArrowMaterial.color = new Color(1f, 0.85f, 0f, 1f); // Gold
 
         foreach (var r in pointerArrow.GetComponentsInChildren<Renderer>()) {
-            r.sharedMaterial = mat;
+            r.sharedMaterial = pointerArrowMaterial;
         }
 
         pointerArrow.SetActive(false);
@@ -520,5 +526,11 @@ public class PackageDeliverySystem : MonoBehaviour {
         UnityEngine.UI.Shadow shadow = go.AddComponent<UnityEngine.UI.Shadow>();
 
         return text;
+    }
+
+    private void OnDestroy() {
+        if (pointerArrowMaterial != null) {
+            Destroy(pointerArrowMaterial);
+        }
     }
 }

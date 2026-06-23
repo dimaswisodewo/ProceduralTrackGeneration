@@ -28,6 +28,26 @@ public class MinimapGPSController : MonoBehaviour {
     private float nextGpsUpdateTime = 0f;
     private Transform carTransform;
 
+    // Resource tracking to prevent memory leaks
+    private List<Texture2D> generatedTextures = new List<Texture2D>();
+    private List<Sprite> generatedSprites = new List<Sprite>();
+    private Material gpsLineMaterial;
+
+    private Texture2D RegisterTexture(Texture2D tex) {
+        if (tex != null) {
+            generatedTextures.Add(tex);
+        }
+        return tex;
+    }
+
+    private Sprite CreateRegisteredSprite(Texture2D texture, Rect rect, Vector2 pivot) {
+        Sprite sprite = Sprite.Create(texture, rect, pivot);
+        if (sprite != null) {
+            generatedSprites.Add(sprite);
+        }
+        return sprite;
+    }
+
     private void Start() {
         carTransform = this.transform;
 
@@ -94,7 +114,7 @@ public class MinimapGPSController : MonoBehaviour {
 
         // Procedural circular border background
         Image borderImage = minimapPanel.AddComponent<Image>();
-        borderImage.sprite = Sprite.Create(
+        borderImage.sprite = CreateRegisteredSprite(
             CreateCircleBorderTexture(256, 12f), 
             new Rect(0, 0, 256, 256), 
             new Vector2(0.5f, 0.5f)
@@ -111,7 +131,7 @@ public class MinimapGPSController : MonoBehaviour {
         glowRect.sizeDelta = Vector2.zero;
         glowRect.anchoredPosition = Vector2.zero;
         Image glowImg = glowFrame.AddComponent<Image>();
-        glowImg.sprite = Sprite.Create(
+        glowImg.sprite = CreateRegisteredSprite(
             CreateCircleBorderOutlineTexture(256, 4f),
             new Rect(0, 0, 256, 256),
             new Vector2(0.5f, 0.5f)
@@ -130,7 +150,7 @@ public class MinimapGPSController : MonoBehaviour {
         maskRect.anchoredPosition = Vector2.zero;
 
         Image maskImage = maskObj.AddComponent<Image>();
-        maskImage.sprite = Sprite.Create(
+        maskImage.sprite = CreateRegisteredSprite(
             CreateCircleTexture(256), 
             new Rect(0, 0, 256, 256), 
             new Vector2(0.5f, 0.5f)
@@ -153,6 +173,13 @@ public class MinimapGPSController : MonoBehaviour {
         RawImage rawImage = rawImageObj.AddComponent<RawImage>();
         rawImage.texture = minimapRT;
 
+        // Shared 64x64 circle sprite to optimize memory and draw calls
+        Sprite circle64Sprite = CreateRegisteredSprite(
+            CreateCircleTexture(64),
+            new Rect(0, 0, 64, 64),
+            new Vector2(0.5f, 0.5f)
+        );
+
         // 4. Player Indicator in Center of Minimap (Simple Circle)
         GameObject playerIconObj = new GameObject("PlayerIcon");
         playerIconObj.layer = 5;
@@ -166,11 +193,7 @@ public class MinimapGPSController : MonoBehaviour {
         playerIconRect.anchoredPosition = Vector2.zero;
 
         Image playerIconImage = playerIconObj.AddComponent<Image>();
-        playerIconImage.sprite = Sprite.Create(
-            CreateCircleTexture(64), 
-            new Rect(0, 0, 64, 64), 
-            new Vector2(0.5f, 0.5f)
-        );
+        playerIconImage.sprite = circle64Sprite;
         playerIconImage.color = new Color(0.1f, 0.9f, 0.35f, 1f); // Muted green player icon
 
         // Add a subtle drop shadow to player icon
@@ -189,11 +212,7 @@ public class MinimapGPSController : MonoBehaviour {
         destIconRect.anchoredPosition = Vector2.zero;
 
         destIconImage = destIconObj.AddComponent<Image>();
-        destIconImage.sprite = Sprite.Create(
-            CreateCircleTexture(64), 
-            new Rect(0, 0, 64, 64), 
-            new Vector2(0.5f, 0.5f)
-        );
+        destIconImage.sprite = circle64Sprite;
         destIconObj.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.6f);
         destIconObj.SetActive(false);
     }
@@ -217,9 +236,9 @@ public class MinimapGPSController : MonoBehaviour {
         if (unlitShader == null) unlitShader = Shader.Find("Sprites/Default");
         if (unlitShader == null) unlitShader = Shader.Find("Universal Render Pipeline/Lit");
         
-        Material lineMat = new Material(unlitShader);
-        lineMat.color = gpsPathColor;
-        pathLineRenderer.sharedMaterial = lineMat;
+        gpsLineMaterial = new Material(unlitShader);
+        gpsLineMaterial.color = gpsPathColor;
+        pathLineRenderer.sharedMaterial = gpsLineMaterial;
 
         // Ensure shadow casting/receiving is off for the line
         pathLineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -477,7 +496,7 @@ public class MinimapGPSController : MonoBehaviour {
             }
         }
         tex.Apply();
-        return tex;
+        return RegisterTexture(tex);
     }
 
     private Texture2D CreateCircleBorderTexture(int size, float thickness) {
@@ -500,7 +519,7 @@ public class MinimapGPSController : MonoBehaviour {
             }
         }
         tex.Apply();
-        return tex;
+        return RegisterTexture(tex);
     }
 
     private Texture2D CreateCircleBorderOutlineTexture(int size, float thickness) {
@@ -519,7 +538,7 @@ public class MinimapGPSController : MonoBehaviour {
             }
         }
         tex.Apply();
-        return tex;
+        return RegisterTexture(tex);
     }
 
     private Texture2D CreateTriangleTexture(int size) {
@@ -538,12 +557,31 @@ public class MinimapGPSController : MonoBehaviour {
             }
         }
         tex.Apply();
-        return tex;
+        return RegisterTexture(tex);
     }
 
     private void OnDestroy() {
         if (minimapRT != null) {
             minimapRT.Release();
+        }
+        if (gpsLineMaterial != null) {
+            Destroy(gpsLineMaterial);
+        }
+        if (generatedSprites != null) {
+            foreach (var sprite in generatedSprites) {
+                if (sprite != null) {
+                    Destroy(sprite);
+                }
+            }
+            generatedSprites.Clear();
+        }
+        if (generatedTextures != null) {
+            foreach (var tex in generatedTextures) {
+                if (tex != null) {
+                    Destroy(tex);
+                }
+            }
+            generatedTextures.Clear();
         }
     }
 }
