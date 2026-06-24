@@ -1020,6 +1020,7 @@ GameObject:
   - component: {fileID: 1364323799}
   - component: {fileID: 1364323800}
   - component: {fileID: 1364323801}
+  - component: {fileID: 1364323802}
   m_Layer: 0
   m_Name: MapGenerator
   m_TagString: Untagged
@@ -1080,6 +1081,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CullingManager
   cullingRadius: 50
   updateInterval: 0.5
+--- !u!114 &1364323802
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1364323798}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 25c004bc4e6a148439ac62f98fe43e0d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TrafficManager
+  maxNPCCount: 10
+  minSpawnDistance: 22
+  maxSpawnDistance: 45
+  despawnDistance: 50
+  spawnCheckInterval: 1
+  laneWidthOffset: 0.65
+  npcHeight: 0.75
+  targetSpeed: 20
 --- !u!1 &1678229141
 GameObject:
   m_ObjectHideFlags: 0

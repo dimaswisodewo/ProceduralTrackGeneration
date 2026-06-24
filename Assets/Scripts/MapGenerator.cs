@@ -164,6 +164,13 @@ public class MapGenerator : MonoBehaviour {
             Debug.LogError("[MapGenerator] Failed to find Car to attach PackageDeliverySystem!");
         }
 
+        // Initialize the NPC Traffic System
+        TrafficManager trafficManager = FindObjectOfType<TrafficManager>();
+        if (trafficManager == null) {
+            GameObject trafficObj = new GameObject("TrafficManager");
+            trafficObj.AddComponent<TrafficManager>();
+        }
+
         // Wait another frame to let cameras/physics settle
         yield return null;
 

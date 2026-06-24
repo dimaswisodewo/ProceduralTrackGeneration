@@ -68,6 +68,14 @@ public class MinimapGPSController : MonoBehaviour {
         StartCoroutine(MinimapRenderRoutine());
     }
 
+    private void OnEnable() {
+        // If already initialized and re-enabled (e.g. after template deactivation), restart coroutine
+        if (minimapCamera != null && carTransform != null) {
+            StopAllCoroutines();
+            StartCoroutine(MinimapRenderRoutine());
+        }
+    }
+
     private void SetupMinimapCamera() {
         // Create RenderTexture
         minimapRT = new RenderTexture(512, 512, 16, RenderTextureFormat.ARGB32);
