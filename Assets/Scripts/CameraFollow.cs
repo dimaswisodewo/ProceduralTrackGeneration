@@ -183,6 +183,28 @@ public class CameraFollow : MonoBehaviour {
         cam.fieldOfView = targetFOV + boostFOVOffset + shockZoomOffset;
     }
 
+    public void ResetCamera() {
+        if (target == null) return;
+
+        targetRigidbody = target.GetComponentInParent<Rigidbody>();
+        InitializeTargetTracking();
+
+        Vector3 targetPos = GetInterpolatedTargetPosition();
+        float targetYawAngle = GetInterpolatedTargetYaw();
+        currentYaw = targetYawAngle;
+
+        // Position the camera directly behind the target using the target yaw
+        Quaternion currentRotation = Quaternion.Euler(15f, currentYaw, 0f);
+        Vector3 targetPosition = targetPos - (currentRotation * Vector3.forward * distance);
+        targetPosition.y = targetPos.y + height;
+
+        currentFollowPosition = targetPosition;
+        transform.position = currentFollowPosition;
+        
+        Vector3 lookAtTarget = targetPos + lookAtOffset;
+        transform.LookAt(lookAtTarget);
+    }
+
     private void OnDestroy() {
         if (shakeTween != null) shakeTween.Kill();
         if (shakeRotTween != null) shakeRotTween.Kill();

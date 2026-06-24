@@ -241,6 +241,8 @@ public class CarController : MonoBehaviour {
             rb = GetComponent<Rigidbody>();
         }
         if (rb != null) {
+            rb.position = position;
+            rb.rotation = rotation;
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
@@ -249,6 +251,12 @@ public class CarController : MonoBehaviour {
         ResetWheelState(frontRight);
         ResetWheelState(rearLeft);
         ResetWheelState(rearRight);
+
+        Physics.SyncTransforms();
+
+        if (CameraFollow.Instance != null) {
+            CameraFollow.Instance.ResetCamera();
+        }
     }
 
     private void FixedUpdate() {
@@ -585,13 +593,23 @@ public class CarController : MonoBehaviour {
     }
 
     private void RespawnAtLastSafePosition() {
-        // Teleport the Rigidbody
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
+        if (rb == null) {
+            rb = GetComponent<Rigidbody>();
+        }
+        if (rb != null) {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
         
         // Add a slight height offset to prevent clipping into the road surface
-        transform.position = lastSafePosition + Vector3.up * 0.5f;
+        Vector3 respawnPos = lastSafePosition + Vector3.up * 0.5f;
+        transform.position = respawnPos;
         transform.rotation = lastSafeRotation;
+        
+        if (rb != null) {
+            rb.position = respawnPos;
+            rb.rotation = lastSafeRotation;
+        }
 
         // Reset steer helper tracker to avoid massive velocity changes on teleport
         lastRotationYaw = lastSafeRotation.eulerAngles.y;
@@ -601,6 +619,12 @@ public class CarController : MonoBehaviour {
         ResetWheelState(frontRight);
         ResetWheelState(rearLeft);
         ResetWheelState(rearRight);
+
+        Physics.SyncTransforms();
+
+        if (CameraFollow.Instance != null) {
+            CameraFollow.Instance.ResetCamera();
+        }
 
         // Notify PackageDeliverySystem to restore/reset the package state
         if (PackageDeliverySystem.Instance != null) {

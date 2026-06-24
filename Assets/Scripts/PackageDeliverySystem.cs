@@ -17,7 +17,7 @@ public class PackageDeliverySystem : MonoBehaviour {
     private int score = 0;
 
     [Header("Collision Damage")]
-    public float minCollisionSpeed = 5.0f; // Shocks below this relative velocity do not cause damage
+    public float minCollisionSpeed = 3.0f; // Shocks below this relative velocity do not cause damage
     public float collisionDamageMultiplier = 5.0f; // Damage multiplier for high impacts
 
     // References

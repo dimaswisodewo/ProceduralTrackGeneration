@@ -109,19 +109,33 @@ public class MapGenerator : MonoBehaviour {
         // Place the car on top of the first generated road piece
         if (nodes.Count > 0) {
             Vector3 startPos = nodes[0].position;
-            startPos.y = 0.5f; // Sits on top of the road surface
+            startPos.y = 1.0f; // Sits slightly above the road surface to prevent clipping under gravity
 
             Quaternion startRot = Quaternion.identity;
+            Vector3 roadDir = Vector3.forward;
             if (nodes[0].connectedEdges.Count > 0) {
-                RoadNode other = (nodes[0].connectedEdges[0].nodeA == nodes[0]) 
-                    ? nodes[0].connectedEdges[0].nodeB 
-                    : nodes[0].connectedEdges[0].nodeA;
-                Vector3 direction = (other.position - nodes[0].position).normalized;
-                direction.y = 0f;
-                if (direction.sqrMagnitude > 0.001f) {
-                    startRot = Quaternion.LookRotation(direction, Vector3.up);
+                // Find which orthogonal neighbor cell from nodes[0] is in roadCells/spotCells to align rotation orthogonally
+                GridPos startGridPos = GetGridCoords(nodes[0].position);
+                GridPos[] orthogonal = new GridPos[] {
+                    new GridPos(startGridPos.x, startGridPos.z + 1), // North
+                    new GridPos(startGridPos.x + 1, startGridPos.z), // East
+                    new GridPos(startGridPos.x, startGridPos.z - 1), // South
+                    new GridPos(startGridPos.x - 1, startGridPos.z)  // West
+                };
+                
+                foreach (var n in orthogonal) {
+                    if (roadCells.Contains(n) || spotCells.Contains(n)) {
+                        Vector3 neighborPos = new Vector3(n.x * cellSize, 0f, n.z * cellSize);
+                        Vector3 dir = (neighborPos - nodes[0].position).normalized;
+                        dir.y = 0f;
+                        if (dir.sqrMagnitude > 0.001f) {
+                            roadDir = dir;
+                            break;
+                        }
+                    }
                 }
             }
+            startRot = Quaternion.LookRotation(roadDir, Vector3.up);
 
             if (cachedCarController == null) {
                 cachedCarController = FindObjectOfType<CarController>();
