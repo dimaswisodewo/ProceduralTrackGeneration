@@ -30,6 +30,9 @@ public class UIManager : MonoBehaviour {
     [Tooltip("UI GameObject shown when track is completed (victory)")]
     [SerializeField] private GameObject victoryTextObject;
 
+    [Tooltip("Black panel shown during map generation")]
+    [SerializeField] private GameObject generationPanel;
+
     [Header("UI Components")]
     [SerializeField] private Slider healthSlider;
     [SerializeField] private Text scoreText;
@@ -323,5 +326,11 @@ public class UIManager : MonoBehaviour {
         go.AddComponent<Shadow>();
 
         return text;
+    }
+
+    public void SetGenerationPanelActive(bool active) {
+        if (generationPanel != null) {
+            generationPanel.SetActive(active);
+        }
     }
 }

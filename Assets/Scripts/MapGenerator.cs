@@ -60,11 +60,38 @@ public class MapGenerator : MonoBehaviour {
     public HashSet<GridPos> RoadCells => roadCells;
     public HashSet<GridPos> SpotCells => spotCells;
 
+    private CarController cachedCarController;
+
     private void Awake() {
         Instance = this;
+        
+        // Find the car and deactivate it during map generation
+        cachedCarController = FindObjectOfType<CarController>();
+        if (cachedCarController == null) {
+            CarController[] cars = FindObjectsOfType<CarController>(true);
+            if (cars != null && cars.Length > 0) {
+                cachedCarController = cars[0];
+            }
+        }
+
+        if (cachedCarController != null) {
+            cachedCarController.gameObject.SetActive(false);
+        }
     }
 
     void Start() {
+        StartCoroutine(GenerateMapCoroutine());
+    }
+
+    private System.Collections.IEnumerator GenerateMapCoroutine() {
+        // Show generation/black panel
+        if (UIManager.Instance != null) {
+            UIManager.Instance.SetGenerationPanelActive(true);
+        }
+
+        // Wait one frame to let the UIManager display/render the panel
+        yield return null;
+
         // Grid setup based on cell size
         minX = Mathf.RoundToInt(-mapSize.x / (cellSize * 2f));
         maxX = Mathf.RoundToInt(mapSize.x / (cellSize * 2f));
@@ -96,25 +123,38 @@ public class MapGenerator : MonoBehaviour {
                 }
             }
 
-            CarController carController = FindObjectOfType<CarController>();
-            if (carController != null) {
-                carController.SetInitialPosition(startPos, startRot);
+            if (cachedCarController == null) {
+                cachedCarController = FindObjectOfType<CarController>();
+                if (cachedCarController == null) {
+                    CarController[] cars = FindObjectsOfType<CarController>(true);
+                    if (cars != null && cars.Length > 0) {
+                        cachedCarController = cars[0];
+                    }
+                }
+            }
+
+            if (cachedCarController != null) {
+                cachedCarController.gameObject.SetActive(true);
+                cachedCarController.SetInitialPosition(startPos, startRot);
             }
         }
 
         // Initialize the Package Delivery System
         PackageDeliverySystem deliverySystem = PackageDeliverySystem.Instance;
         if (deliverySystem == null) {
-            GameObject carObj = GameObject.Find("Car");
-            if (carObj == null) {
-                CarController carController = FindObjectOfType<CarController>();
-                if (carController != null) {
-                    carObj = carController.gameObject;
-                }
+            GameObject carObj = null;
+            if (cachedCarController != null) {
+                carObj = cachedCarController.gameObject;
+            } else {
+                carObj = GameObject.Find("Car");
             }
+            
             if (carObj != null) {
                 carObj.tag = "Player";
-                deliverySystem = carObj.AddComponent<PackageDeliverySystem>();
+                deliverySystem = carObj.GetComponent<PackageDeliverySystem>();
+                if (deliverySystem == null) {
+                    deliverySystem = carObj.AddComponent<PackageDeliverySystem>();
+                }
             }
         }
 
@@ -122,6 +162,13 @@ public class MapGenerator : MonoBehaviour {
             deliverySystem.InitializeSystem(spawnedDeliverySpots);
         } else {
             Debug.LogError("[MapGenerator] Failed to find Car to attach PackageDeliverySystem!");
+        }
+
+        // Wait another frame to let cameras/physics settle
+        yield return null;
+
+        if (UIManager.Instance != null) {
+            UIManager.Instance.SetGenerationPanelActive(false);
         }
     }
 
