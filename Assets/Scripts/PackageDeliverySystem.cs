@@ -325,14 +325,15 @@ public class PackageDeliverySystem : MonoBehaviour {
     private void OnCollisionEnter(Collision collision) {
         if (currentState != DeliveryState.CollectingStamps && currentState != DeliveryState.HeadingToFinalDestination) return;
 
-        // Collision damage only applies to Building and Spot tagged objects
+        // Collision damage applies to Building, Spot, and NPC tagged/component objects
         bool isBuilding = collision.gameObject.CompareTag("Building") || 
                           (collision.transform.parent != null && collision.transform.parent.CompareTag("Building"));
         bool isSpot = collision.gameObject.CompareTag("Spot") || 
                       (collision.transform.parent != null && collision.transform.parent.CompareTag("Spot")) ||
                       collision.gameObject.GetComponentInParent<DeliverySpot>() != null;
+        bool isNPC = collision.gameObject.GetComponentInParent<NPCCarController>() != null;
 
-        if (!isBuilding && !isSpot) return;
+        if (!isBuilding && !isSpot && !isNPC) return;
 
         float impactSpeed = collision.relativeVelocity.magnitude;
         if (impactSpeed > minCollisionSpeed) {
@@ -341,7 +342,8 @@ public class PackageDeliverySystem : MonoBehaviour {
             TakeDamage(damage);
 
             if (UIManager.Instance != null) {
-                UIManager.Instance.FlashDamageText($"IMPACT! -{damage:F0}%");
+                string msg = isNPC ? $"TRAFFIC CRASH! -{damage:F0}%" : $"IMPACT! -{damage:F0}%";
+                UIManager.Instance.FlashDamageText(msg);
             }
         }
     }

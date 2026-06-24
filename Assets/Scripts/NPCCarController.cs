@@ -18,6 +18,10 @@ public class NPCCarController : MonoBehaviour {
     [Header("Wheels Visuals")]
     public float wheelRadius = 0.35f;
 
+    [Header("Collider Settings")]
+    [Tooltip("Scale factor for the NPC body collider to make it smaller than the visual appearance.")]
+    public float colliderScaleFactor = 0.7f;
+
     [Header("States")]
     public bool isSpunOut = false;
     public bool isRecovering = false;
@@ -32,6 +36,7 @@ public class NPCCarController : MonoBehaviour {
     private float pauseTimer = 0f;
     private float stuckTimer = 0f;
     private Vector3 lastPosition;
+    private float frontZOffset = 1.3f;
 
 
 
@@ -47,15 +52,76 @@ public class NPCCarController : MonoBehaviour {
         Collider[] colliders = GetComponentsInChildren<Collider>(true);
         bool hasBodyCollider = false;
         foreach (var col in colliders) {
-            if (!(col is WheelCollider)) {
-                hasBodyCollider = true;
-                break;
+            if (col is WheelCollider || IsWheelTransform(col.transform)) {
+                // Destroy any wheel colliders so only the body has a collider
+                Destroy(col);
+                continue;
+            }
+
+            hasBodyCollider = true;
+            if (!col.isTrigger) {
+                ShrinkCollider(col);
             }
         }
+
+        // Dynamically calculate the front bumper z-offset for BoxCast avoidance sweep
+        float maxZ = 1.3f;
+        foreach (var col in colliders) {
+            if (col == null || col is WheelCollider || IsWheelTransform(col.transform)) continue;
+            if (col is BoxCollider box) {
+                float localColFront = box.center.z + box.size.z * 0.5f;
+                Vector3 localPos = transform.InverseTransformPoint(col.transform.TransformPoint(new Vector3(0f, 0f, localColFront)));
+                if (localPos.z > maxZ) {
+                    maxZ = localPos.z;
+                }
+            }
+        }
+        frontZOffset = maxZ;
+
         if (!hasBodyCollider) {
             BoxCollider box = gameObject.AddComponent<BoxCollider>();
             box.center = new Vector3(0f, 0.4f, 0f);
-            box.size = new Vector3(1.3f, 0.8f, 2.6f);
+            box.size = new Vector3(1.3f, 0.8f, 2.6f) * colliderScaleFactor;
+            frontZOffset = box.center.z + box.size.z * 0.5f;
+        }
+
+        // Add a trigger collider to detect kinematic-kinematic NPC collisions
+        BoxCollider triggerBox = gameObject.AddComponent<BoxCollider>();
+        triggerBox.isTrigger = true;
+        triggerBox.center = new Vector3(0f, 0.4f, 0f);
+        triggerBox.size = new Vector3(1.3f, 0.8f, frontZOffset * 2f) * colliderScaleFactor;
+    }
+
+    private bool IsWheelTransform(Transform t) {
+        while (t != null && t != transform) {
+            if (t.name.ToLower().Contains("wheel")) {
+                return true;
+            }
+            t = t.parent;
+        }
+        return false;
+    }
+
+    private void ShrinkCollider(Collider col) {
+        if (col == null) return;
+
+        if (col is BoxCollider box) {
+            box.size *= colliderScaleFactor;
+        } else if (col is MeshCollider meshCol) {
+            if (meshCol.sharedMesh != null) {
+                Bounds localBounds = meshCol.sharedMesh.bounds;
+                GameObject colGo = meshCol.gameObject;
+                meshCol.enabled = false;
+                
+                BoxCollider newBox = colGo.AddComponent<BoxCollider>();
+                newBox.center = localBounds.center;
+                newBox.size = localBounds.size * colliderScaleFactor;
+            }
+        } else if (col is SphereCollider sphere) {
+            sphere.radius *= colliderScaleFactor;
+        } else if (col is CapsuleCollider capsule) {
+            capsule.radius *= colliderScaleFactor;
+            capsule.height *= colliderScaleFactor;
         }
     }
 
@@ -205,22 +271,47 @@ public class NPCCarController : MonoBehaviour {
 
 
     private float CheckForObstacles() {
-        Vector3 origin = transform.position + transform.rotation * raycastOffset;
+        // Position the boxcast origin slightly in front of the front bumper to prevent self-overlap
+        Vector3 localOrigin = raycastOffset;
+        localOrigin.z = frontZOffset + 0.1f;
+
+        Vector3 origin = transform.position + transform.rotation * localOrigin;
         Vector3 direction = transform.forward;
         float checkDist = detectionDistance + (currentSpeed * 0.4f);
 
-        RaycastHit hit;
-        if (Physics.BoxCast(origin, raycastExtent, direction, out hit, transform.rotation, checkDist)) {
-            // Ignore ourselves, roads, ground, and buildings
-            if (hit.collider.gameObject != gameObject && 
-                hit.collider.GetComponentInParent<RoadPiece>() == null && 
-                !hit.collider.name.Contains("GroundPlane") &&
-                !hit.collider.name.Contains("Building")) {
-                
-                float distFactor = hit.distance / checkDist;
-                // Stronger slowdown as we get closer
-                return Mathf.Clamp01(distFactor * 0.8f);
+        // Keep the box very thin in the Z direction so it sweeps starting from the front bumper
+        Vector3 extents = raycastExtent;
+        extents.z = 0.1f;
+
+        RaycastHit[] hits = Physics.BoxCastAll(origin, extents, direction, transform.rotation, checkDist);
+        
+        float minDistance = float.MaxValue;
+        bool obstacleFound = false;
+
+        foreach (var hit in hits) {
+            // Ignore ourselves (any collider on this GameObject or its children)
+            if (hit.collider == null || hit.collider.transform.root == transform.root) {
+                continue;
             }
+
+            // Ignore roads, ground, and buildings
+            if (hit.collider.GetComponentInParent<RoadPiece>() != null || 
+                hit.collider.name.Contains("GroundPlane") || 
+                hit.collider.name.Contains("Building")) {
+                continue;
+            }
+
+            // Found a valid obstacle (another NPC or the Player)
+            if (hit.distance < minDistance) {
+                minDistance = hit.distance;
+                obstacleFound = true;
+            }
+        }
+
+        if (obstacleFound) {
+            float distFactor = minDistance / checkDist;
+            // Stronger slowdown as we get closer
+            return Mathf.Clamp01(distFactor * 0.8f);
         }
         return 1f;
     }
@@ -299,13 +390,40 @@ public class NPCCarController : MonoBehaviour {
                 if (otherNPC.isSpunOut && impactForce > 3f) {
                     Vector3 impactDir = collision.relativeVelocity;
                     
-                    // Spin out this NPC in the direction of the hit
-                    SpinOut(impactDir * 0.8f, collision.contacts[0].point);
+                    // Spin out this NPC in the direction of the hit (reduced force for NPC-to-NPC impact)
+                    SpinOut(impactDir * 0.3f, collision.contacts[0].point);
                 } else {
-                    // Minor bump from another NPC -> Shock-pause for 3 seconds
-                    TriggerShockPause(3.0f);
+                    // Minor bump from another NPC -> Shock-pause for 2 seconds
+                    TriggerShockPause(2.0f);
                 }
             }
+        }
+    }
+
+    private void OnTriggerEnter(Collider other) {
+        if (isSpunOut || isRecovering) return;
+
+        // Check if we hit another NPC
+        NPCCarController otherNPC = other.gameObject.GetComponentInParent<NPCCarController>();
+        if (otherNPC != null && otherNPC != this) {
+            // Let OnCollisionEnter handle it if either is already spun out / recovering (since they become dynamic physics bodies)
+            if (otherNPC.isSpunOut || otherNPC.isRecovering || isSpunOut || isRecovering) return;
+
+            // Minor bump / Fender bender -> Both shock-pause and recoil slightly using DOTween
+            // This prevents them from flying in the air like they do when hit by the player
+            TriggerShockPause(1.5f);
+            otherNPC.TriggerShockPause(1.5f);
+
+            Vector3 pushDirection = (transform.position - otherNPC.transform.position).normalized;
+            pushDirection.y = 0f;
+            if (pushDirection.sqrMagnitude < 0.001f) {
+                pushDirection = -transform.forward;
+            }
+
+            // Push this NPC backward slightly
+            transform.DOMove(transform.position + pushDirection * 0.3f, 0.25f).SetEase(Ease.OutQuad);
+            // Push the other NPC in the opposite direction slightly
+            otherNPC.transform.DOMove(otherNPC.transform.position - pushDirection * 0.3f, 0.25f).SetEase(Ease.OutQuad);
         }
     }
 
