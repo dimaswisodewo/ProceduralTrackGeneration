@@ -249,12 +249,6 @@ public class CarController : MonoBehaviour {
     private void FixedUpdate() {
         if (CarInputManager.Instance == null) return;
 
-        // 0. Handle Reset/Respawn Input
-        if (CarInputManager.Instance.ResetPressed) {
-            RespawnAtLastSafePosition();
-            return;
-        }
-
         float throttle = CarInputManager.Instance.Throttle;
         float steering = CarInputManager.Instance.Steering;
         float brake = CarInputManager.Instance.Brake;
@@ -383,6 +377,11 @@ public class CarController : MonoBehaviour {
     }
 
     private void Update() {
+        // Handle Reset/Respawn Input
+        if (CarInputManager.Instance != null && CarInputManager.Instance.ResetPressed) {
+            RespawnAtLastSafePosition();
+        }
+
         // Update visual mesh positions and rotations to match physical colliders
         UpdateWheelVisual(frontLeft);
         UpdateWheelVisual(frontRight);
