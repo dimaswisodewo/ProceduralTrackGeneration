@@ -31,11 +31,7 @@ public class PackageDeliverySystem : MonoBehaviour {
     private DeliverySpot finalDestinationSpot;
     private List<DeliverySpot> allSpots = new List<DeliverySpot>();
 
-    // UI references
-    private UnityEngine.UI.Slider healthSlider;
-    private UnityEngine.UI.Text statusText;
-    private UnityEngine.UI.Text warningText;
-    private UnityEngine.UI.Text scoreText;
+    // UI references managed by UIManager
 
     // Navigation Arrow
     private GameObject pointerArrow;
@@ -58,38 +54,7 @@ public class PackageDeliverySystem : MonoBehaviour {
             return;
         }
 
-        // 1. Hook the health bar Slider in the Canvas
-        GameObject sliderObj = GameObject.Find("HealthBar");
-        if (sliderObj != null) {
-            healthSlider = sliderObj.GetComponent<UnityEngine.UI.Slider>();
-            if (healthSlider != null) {
-                healthSlider.minValue = 0f;
-                healthSlider.maxValue = 1f;
-                healthSlider.value = 1f;
-            }
-            UnityEngine.UI.Text label = sliderObj.GetComponentInChildren<UnityEngine.UI.Text>();
-            if (label != null) {
-                label.text = "Document Integrity";
-            }
-        }
 
-        // 2. Programmatically create UI status, warning, and score text elements to avoid editor requirements
-        statusText = GetOrCreateUIText("PackageStatusText", new Vector2(0f, -60f), new Vector2(650f, 40f), 18, Color.white, TextAnchor.MiddleCenter);
-        warningText = GetOrCreateUIText("PackageWarningText", new Vector2(0f, -110f), new Vector2(650f, 45f), 22, new Color(1f, 0.2f, 0.2f), TextAnchor.MiddleCenter);
-        if (warningText != null) {
-            warningText.fontStyle = FontStyle.Bold;
-            warningText.gameObject.SetActive(false);
-        }
-        
-        scoreText = GetOrCreateUIText("PackageScoreText", new Vector2(-20f, -20f), new Vector2(250f, 40f), 20, Color.yellow, TextAnchor.MiddleRight);
-        if (scoreText != null) {
-            // Position at top-right
-            RectTransform rect = scoreText.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(1f, 1f);
-            rect.anchorMax = new Vector2(1f, 1f);
-            rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-25f, -25f);
-        }
 
         // 3. Setup Stamp Spots & Final Destination
         collectedStampSpots.Clear();
@@ -102,6 +67,11 @@ public class PackageDeliverySystem : MonoBehaviour {
             }
         } else {
             finalDestinationSpot = spots[0];
+        }
+
+        // Initialize UI Manager
+        if (UIManager.Instance != null) {
+            UIManager.Instance.InitializeUI(stampSpots.Count);
         }
 
         // Initially setup rings color/state
@@ -132,70 +102,62 @@ public class PackageDeliverySystem : MonoBehaviour {
     private void SetState(DeliveryState newState) {
         currentState = newState;
 
+        if (UIManager.Instance != null) {
+            UIManager.Instance.SetStateUI(currentState);
+        }
+
         switch (currentState) {
             case DeliveryState.CollectingStamps:
                 packageHealth = 100f;
-                UpdateSliderColor();
-                if (healthSlider != null) healthSlider.gameObject.SetActive(true);
+                if (UIManager.Instance != null) {
+                    UIManager.Instance.UpdateHealthSlider(packageHealth);
+                }
                 if (pointerArrow != null) pointerArrow.SetActive(show3DPointerArrow);
-                if (warningText != null) warningText.gameObject.SetActive(false);
                 UpdateObjectiveText();
                 UpdatePointerDirection();
                 break;
 
             case DeliveryState.HeadingToFinalDestination:
-                if (healthSlider != null) healthSlider.gameObject.SetActive(true);
                 if (pointerArrow != null) pointerArrow.SetActive(show3DPointerArrow);
-                if (warningText != null) warningText.gameObject.SetActive(false);
                 UpdateObjectiveText();
                 UpdatePointerDirection();
                 break;
 
             case DeliveryState.Broken:
                 packageHealth = 0f;
-                UpdateSliderColor();
+                if (UIManager.Instance != null) {
+                    UIManager.Instance.UpdateHealthSlider(packageHealth);
+                }
                 if (pointerArrow != null) pointerArrow.SetActive(false);
-                if (warningText != null) {
-                    warningText.text = "DOCUMENTS RUINED! Press R to Respawn";
-                    warningText.gameObject.SetActive(true);
-                }
-                if (statusText != null) {
-                    statusText.text = "OBJECTIVE: Press R to Respawn at last safe position";
-                    statusText.color = new Color(1f, 0.3f, 0.3f);
-                }
                 break;
 
             case DeliveryState.GameOver:
                 if (pointerArrow != null) pointerArrow.SetActive(false);
-                if (healthSlider != null) healthSlider.gameObject.SetActive(false);
-                if (warningText != null) warningText.gameObject.SetActive(false);
-                if (statusText != null) {
-                    statusText.text = "VICTORY! All stamps collected and delivered! Press R to restart.";
-                    statusText.color = Color.green;
-                }
                 break;
         }
     }
 
     private void UpdateScoreText() {
-        if (scoreText != null) {
+        if (UIManager.Instance != null) {
             int collected = collectedStampSpots.Count;
             int total = stampSpots.Count;
-            scoreText.text = $"STAMPS: {collected} / {total}";
+            UIManager.Instance.UpdateScore(collected, total);
         }
     }
 
     private void UpdateObjectiveText() {
-        if (statusText == null) return;
+        if (UIManager.Instance == null) return;
 
         if (currentState == DeliveryState.CollectingStamps) {
             int collected = collectedStampSpots.Count;
             int total = stampSpots.Count;
-            statusText.text = $"OBJECTIVE: Collect stamps from each location. ({collected}/{total} collected)";
-            statusText.color = new Color(0.3f, 0.8f, 1f); // Sky blue
+            string text = $"OBJECTIVE: Collect stamps from each location. ({collected}/{total} collected)";
+            Color color = new Color(0.3f, 0.8f, 1f); // Sky blue
+            UIManager.Instance.SetObjectiveText(text, color);
         } else if (currentState == DeliveryState.HeadingToFinalDestination) {
-            statusText.text = "OBJECTIVE: Go to the FINAL DESTINATION to finish!";
-            statusText.color = new Color(1f, 0.6f, 0.2f); // Orange
+            string text = "OBJECTIVE: Go to the FINAL DESTINATION to finish!";
+            Color color = new Color(1f, 0.6f, 0.2f); // Orange
+            UIManager.Instance.SetObjectiveText(text, color);
         }
     }
 
@@ -250,10 +212,18 @@ public class PackageDeliverySystem : MonoBehaviour {
                     if (finalDestinationSpot != null) {
                         finalDestinationSpot.SetAsTarget(true, isPickup: false); // Highlight final destination orange
                     }
-                    StartCoroutine(FlashStatusSuccess("ALL STAMPS COLLECTED! Head to final destination!"));
+                    if (UIManager.Instance != null) {
+                        string nextText = "OBJECTIVE: Go to the FINAL DESTINATION to finish!";
+                        Color nextColor = new Color(1f, 0.6f, 0.2f); // Orange
+                        UIManager.Instance.FlashObjectiveSuccessText("ALL STAMPS COLLECTED! Head to final destination!", nextText, nextColor);
+                    }
                 } else {
                     UpdatePointerDirection();
-                    StartCoroutine(FlashStatusSuccess($"STAMP COLLECTED! ({collected}/{total})"));
+                    if (UIManager.Instance != null) {
+                        string nextText = $"OBJECTIVE: Collect stamps from each location. ({collected}/{total} collected)";
+                        Color nextColor = new Color(0.3f, 0.8f, 1f); // Sky blue
+                        UIManager.Instance.FlashObjectiveSuccessText($"STAMP COLLECTED! ({collected}/{total})", nextText, nextColor);
+                    }
                 }
             }
         } else if (currentState == DeliveryState.HeadingToFinalDestination) {
@@ -273,10 +243,23 @@ public class PackageDeliverySystem : MonoBehaviour {
                     finalDestinationSpot.SetAsTarget(true, isPickup: false);
                 }
             }
-            StartCoroutine(FlashStatusSuccess("Documents Restored! Drive carefully."));
+            if (UIManager.Instance != null) {
+                string nextText = "";
+                Color nextColor = Color.white;
+                if (currentState == DeliveryState.CollectingStamps) {
+                    nextText = $"OBJECTIVE: Collect stamps from each location. ({collectedStampSpots.Count}/{stampSpots.Count} collected)";
+                    nextColor = new Color(0.3f, 0.8f, 1f);
+                } else if (currentState == DeliveryState.HeadingToFinalDestination) {
+                    nextText = "OBJECTIVE: Go to the FINAL DESTINATION to finish!";
+                    nextColor = new Color(1f, 0.6f, 0.2f);
+                }
+                UIManager.Instance.FlashObjectiveSuccessText("Documents Restored! Drive carefully.", nextText, nextColor);
+            }
         } else if (currentState == DeliveryState.CollectingStamps || currentState == DeliveryState.HeadingToFinalDestination) {
             packageHealth = 100f;
-            UpdateSliderColor();
+            if (UIManager.Instance != null) {
+                UIManager.Instance.UpdateHealthSlider(packageHealth);
+            }
         }
     }
 
@@ -284,7 +267,9 @@ public class PackageDeliverySystem : MonoBehaviour {
         if (currentState != DeliveryState.CollectingStamps && currentState != DeliveryState.HeadingToFinalDestination) return;
 
         packageHealth = Mathf.Max(0f, packageHealth - amount);
-        UpdateSliderColor();
+        if (UIManager.Instance != null) {
+            UIManager.Instance.UpdateHealthSlider(packageHealth);
+        }
 
         if (packageHealth <= 0.01f) {
             SetState(DeliveryState.Broken);
@@ -350,49 +335,13 @@ public class PackageDeliverySystem : MonoBehaviour {
             float damage = excess * collisionDamageMultiplier;
             TakeDamage(damage);
 
-            StartCoroutine(FlashWarningText($"IMPACT! -{damage:F0}%"));
-        }
-    }
-
-    private System.Collections.IEnumerator FlashWarningText(string msg) {
-        if (warningText == null) yield break;
-        warningText.text = msg;
-        warningText.gameObject.SetActive(true);
-        yield return new WaitForSeconds(1.5f);
-        if (warningText.text == msg) {
-            warningText.gameObject.SetActive(false);
-        }
-    }
-
-    private System.Collections.IEnumerator FlashStatusSuccess(string msg) {
-        if (statusText != null) {
-            statusText.text = msg;
-            statusText.color = Color.green;
-        }
-        yield return new WaitForSeconds(2.0f);
-        if (statusText != null && statusText.text == msg) {
-            UpdateObjectiveText();
-        }
-    }
-
-    private void UpdateSliderColor() {
-        if (healthSlider == null) return;
-
-        healthSlider.value = packageHealth / 100f;
-
-        UnityEngine.UI.Image fill = healthSlider.fillRect != null ? 
-            healthSlider.fillRect.GetComponent<UnityEngine.UI.Image>() : null;
-
-        if (fill != null) {
-            if (packageHealth > 70f) {
-                fill.color = new Color(0.2f, 0.8f, 0.2f, 0.9f); // Green
-            } else if (packageHealth > 30f) {
-                fill.color = new Color(0.9f, 0.65f, 0.1f, 0.9f); // Yellow/Orange
-            } else {
-                fill.color = new Color(0.9f, 0.2f, 0.2f, 0.9f); // Red
+            if (UIManager.Instance != null) {
+                UIManager.Instance.FlashDamageText($"IMPACT! -{damage:F0}%");
             }
         }
     }
+
+
 
     private void CreatePointerArrow() {
         if (pointerArrow != null) return;
@@ -435,42 +384,7 @@ public class PackageDeliverySystem : MonoBehaviour {
         pointerArrow.SetActive(false);
     }
 
-    private UnityEngine.UI.Text GetOrCreateUIText(string name, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment) {
-        GameObject existing = GameObject.Find(name);
-        if (existing != null) {
-            return existing.GetComponent<UnityEngine.UI.Text>();
-        }
-        return CreateUIText(name, anchoredPosition, size, fontSize, color, alignment);
-    }
 
-    private UnityEngine.UI.Text CreateUIText(string name, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment) {
-        Canvas canvas = FindObjectOfType<Canvas>();
-        if (canvas == null) return null;
-
-        GameObject go = new GameObject(name);
-        go.layer = 5;
-        go.transform.SetParent(canvas.transform, false);
-
-        RectTransform rect = go.AddComponent<RectTransform>();
-        rect.sizeDelta = size;
-        rect.anchoredPosition = anchoredPosition;
-        rect.anchorMin = new Vector2(0.5f, 1f);
-        rect.anchorMax = new Vector2(0.5f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
-
-        UnityEngine.UI.Text text = go.AddComponent<UnityEngine.UI.Text>();
-        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (text.font == null) {
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        }
-        text.fontSize = fontSize;
-        text.color = color;
-        text.alignment = alignment;
-
-        UnityEngine.UI.Shadow shadow = go.AddComponent<UnityEngine.UI.Shadow>();
-
-        return text;
-    }
 
     private void OnDestroy() {
         if (pointerArrowMaterial != null) {
