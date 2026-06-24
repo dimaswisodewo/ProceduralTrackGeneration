@@ -196,7 +196,7 @@ public class UIManager : MonoBehaviour {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
                             objectivesText.text = "OBJECTIVE: Press R to Respawn at last safe position";
-                            objectivesText.color = new Color(1f, 0.3f, 0.3f);
+                            objectivesText.color = new Color(0.95f, 0.45f, 0.45f); // Pastel coral
                         }
                     }
                 }
@@ -223,7 +223,7 @@ public class UIManager : MonoBehaviour {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
                             objectivesText.text = "VICTORY! All stamps collected and delivered! Press R to restart.";
-                            objectivesText.color = Color.green;
+                            objectivesText.color = new Color(0.45f, 0.85f, 0.55f); // Soft pastel green
                         }
                     }
                 }
@@ -323,7 +323,7 @@ public class UIManager : MonoBehaviour {
         if (objectiveScaleTween != null) objectiveScaleTween.Kill();
 
         objectivesText.text = msg;
-        objectivesText.color = Color.green;
+        objectivesText.color = new Color(0.45f, 0.85f, 0.55f); // Soft pastel green
 
         objectivesTextObject.transform.localScale = Vector3.one;
         objectiveScaleTween = objectivesTextObject.transform.DOPunchScale(new Vector3(0.2f, 0.2f, 0.2f), 0.4f, 8, 0.5f)

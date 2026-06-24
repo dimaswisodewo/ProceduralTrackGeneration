@@ -157,11 +157,11 @@ public class PackageDeliverySystem : MonoBehaviour {
             int collected = collectedStampSpots.Count;
             int total = stampSpots.Count;
             string text = $"OBJECTIVE: Collect stamps from each location. ({collected}/{total} collected)";
-            Color color = new Color(0.3f, 0.8f, 1f); // Sky blue
+            Color color = new Color(0.5f, 0.75f, 0.95f); // Pastel Sky Blue
             UIManager.Instance.SetObjectiveText(text, color);
         } else if (currentState == DeliveryState.HeadingToFinalDestination) {
             string text = "OBJECTIVE: Go to the FINAL DESTINATION to finish!";
-            Color color = new Color(1f, 0.6f, 0.2f); // Orange
+            Color color = new Color(0.95f, 0.65f, 0.45f); // Pastel Orange/Peach
             UIManager.Instance.SetObjectiveText(text, color);
         }
     }
@@ -219,14 +219,14 @@ public class PackageDeliverySystem : MonoBehaviour {
                     }
                     if (UIManager.Instance != null) {
                         string nextText = "OBJECTIVE: Go to the FINAL DESTINATION to finish!";
-                        Color nextColor = new Color(1f, 0.6f, 0.2f); // Orange
+                        Color nextColor = new Color(0.95f, 0.65f, 0.45f); // Pastel Orange/Peach
                         UIManager.Instance.FlashObjectiveSuccessText("ALL STAMPS COLLECTED! Head to final destination!", nextText, nextColor);
                     }
                 } else {
                     UpdatePointerDirection();
                     if (UIManager.Instance != null) {
                         string nextText = $"OBJECTIVE: Collect stamps from each location. ({collected}/{total} collected)";
-                        Color nextColor = new Color(0.3f, 0.8f, 1f); // Sky blue
+                        Color nextColor = new Color(0.5f, 0.75f, 0.95f); // Pastel Sky Blue
                         UIManager.Instance.FlashObjectiveSuccessText($"STAMP COLLECTED! ({collected}/{total})", nextText, nextColor);
                     }
                 }
@@ -253,10 +253,10 @@ public class PackageDeliverySystem : MonoBehaviour {
                 Color nextColor = Color.white;
                 if (currentState == DeliveryState.CollectingStamps) {
                     nextText = $"OBJECTIVE: Collect stamps from each location. ({collectedStampSpots.Count}/{stampSpots.Count} collected)";
-                    nextColor = new Color(0.3f, 0.8f, 1f);
+                    nextColor = new Color(0.5f, 0.75f, 0.95f);
                 } else if (currentState == DeliveryState.HeadingToFinalDestination) {
                     nextText = "OBJECTIVE: Go to the FINAL DESTINATION to finish!";
-                    nextColor = new Color(1f, 0.6f, 0.2f);
+                    nextColor = new Color(0.95f, 0.65f, 0.45f);
                 }
                 UIManager.Instance.FlashObjectiveSuccessText("Documents Restored! Drive carefully.", nextText, nextColor);
             }
@@ -382,7 +382,7 @@ public class PackageDeliverySystem : MonoBehaviour {
         Shader shader = Shader.Find("Sprites/Default");
         if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
         pointerArrowMaterial = new Material(shader);
-        pointerArrowMaterial.color = new Color(1f, 0.85f, 0f, 1f); // Gold
+        pointerArrowMaterial.color = new Color(0.95f, 0.85f, 0.45f, 1f); // Pastel Gold
 
         foreach (var r in pointerArrow.GetComponentsInChildren<Renderer>()) {
             r.sharedMaterial = pointerArrowMaterial;

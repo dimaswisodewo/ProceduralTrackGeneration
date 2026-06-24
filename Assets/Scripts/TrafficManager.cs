@@ -309,15 +309,14 @@ public class TrafficManager : MonoBehaviour {
             }
         }
 
-        // Palette of beautiful, vibrant colors for the traffic variety
+        // Palette of lighter, dull grey colors
         Color[] paintColors = new Color[] {
-            new Color(0.12f, 0.58f, 0.95f), // Soft Pastel Blue
-            new Color(0.15f, 0.76f, 0.38f), // Minty Emerald Green
-            new Color(0.96f, 0.72f, 0.12f), // Golden Pastel Yellow
-            new Color(0.92f, 0.43f, 0.15f), // Warm Tangerine
-            new Color(0.68f, 0.22f, 0.92f), // Royal Neon Purple
-            new Color(0.12f, 0.82f, 0.82f), // Soft Turquoise/Cyan
-            new Color(0.92f, 0.28f, 0.55f)  // Pastel Pink/Rose
+            new Color(0.42f, 0.42f, 0.42f),   // Muted Medium Grey
+            new Color(0.48f, 0.48f, 0.48f),   // Medium Light Grey
+            new Color(0.52f, 0.52f, 0.52f),   // Light Slate Grey
+            new Color(0.45f, 0.46f, 0.48f),   // Dull Steel Grey
+            new Color(0.38f, 0.38f, 0.4f),     // Stone Grey
+            new Color(0.56f, 0.56f, 0.58f)    // Bright Dull Grey
         };
         Color paintColor = paintColors[Random.Range(0, paintColors.Length)];
 

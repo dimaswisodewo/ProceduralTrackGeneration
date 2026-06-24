@@ -1169,14 +1169,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25c004bc4e6a148439ac62f98fe43e0d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TrafficManager
-  maxNPCCount: 6
+  maxNPCCount: 10
   minSpawnDistance: 22
   maxSpawnDistance: 45
   despawnDistance: 50
   spawnCheckInterval: 1
   laneWidthOffset: 0.65
   npcHeight: 0.75
-  targetSpeed: 20
+  targetSpeed: 25
 --- !u!1 &1678229141
 GameObject:
   m_ObjectHideFlags: 0

@@ -9,9 +9,9 @@ public class MinimapGPSController : MonoBehaviour {
     public float gpsUpdateInterval = 0.15f;
     public float pathHeightOffset = 0.22f;
     public float lineWidth = 0.45f;
-    public Color gpsPathColor = new Color(0.65f, 0.15f, 1f, 0.8f); // Pastel Neon Purple
-    public Color pickupIconColor = new Color(0f, 0.6f, 1f, 1f); // Vibrant Blue
-    public Color deliveryIconColor = new Color(1f, 0.5f, 0f, 1f); // Vibrant Orange
+    public Color gpsPathColor = new Color(0.75f, 0.55f, 0.95f, 0.8f); // Soft Pastel Purple
+    public Color pickupIconColor = new Color(0.5f, 0.75f, 0.95f, 1f); // Soft Pastel Blue
+    public Color deliveryIconColor = new Color(0.95f, 0.65f, 0.45f, 1f); // Soft Pastel Orange/Peach
 
     [Header("Optimization Settings")]
     [Tooltip("Target frame rate for the minimap rendering. Lower values save GPU power.")]
@@ -212,7 +212,7 @@ public class MinimapGPSController : MonoBehaviour {
 
         Image playerIconImage = playerIconObj.AddComponent<Image>();
         playerIconImage.sprite = circle64Sprite;
-        playerIconImage.color = new Color(0.1f, 0.9f, 0.35f, 1f); // Muted green player icon
+        playerIconImage.color = new Color(0.55f, 0.85f, 0.65f, 1f); // Soft pastel green player icon
 
         // Add a subtle drop shadow to player icon
         playerIconObj.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.6f);

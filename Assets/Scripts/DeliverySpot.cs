@@ -66,14 +66,14 @@ public class DeliverySpot : MonoBehaviour {
 
         Color targetColor;
         if (isPickupTarget) {
-            // Glowing vibrant blue for package pickup
-            targetColor = new Color(0f, 0.5f, 1f, 0.4f);
+            // Glowing pastel blue for package pickup
+            targetColor = new Color(0.5f, 0.75f, 0.95f, 0.4f);
         } else if (isDeliveryTarget) {
-            // Glowing orange/yellow for delivery destination
-            targetColor = new Color(1f, 0.5f, 0f, 0.4f);
+            // Glowing pastel orange/peach for delivery destination
+            targetColor = new Color(0.95f, 0.65f, 0.45f, 0.4f);
         } else {
-            // Dim, semi-transparent grey for inactive spots
-            targetColor = new Color(0.5f, 0.5f, 0.5f, 0.08f);
+            // Dim, semi-transparent light grey for inactive spots
+            targetColor = new Color(0.6f, 0.6f, 0.6f, 0.08f);
         }
 
         ringMaterial.color = targetColor;
