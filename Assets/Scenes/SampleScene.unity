@@ -483,11 +483,11 @@ MonoBehaviour:
   pastelTint: {r: 0.98, g: 0.92, b: 0.94, a: 1}
   saturation: 0.75
   shadowLift: 0.1
-  warmth: 0.15
+  warmth: 0.1
   dreaminess: 0.35
   blurOffset: 1.5
-  vignetteStrength: 0.3
-  vignetteRange: 0.45
+  vignetteStrength: 0.8
+  vignetteRange: 0.8
   vignetteColor: {r: 0.35, g: 0.28, b: 0.32, a: 1}
 --- !u!1 &402174457
 GameObject:
@@ -1054,9 +1054,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b06ba18d510246e68648d176c2c918e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapGenerator
-  numberOfNodes: 150
+  numberOfNodes: 100
   numberOfSpots: 11
-  mapSize: {x: 200, y: 200}
+  mapSize: {x: 400, y: 400}
   cellSize: 4
   straightPrefab: {fileID: 3998984614176541144, guid: 39d3951d82d1541d78bbbd7bb07319b6, type: 3}
   turnPrefab: {fileID: 3034595356720907573, guid: dcfed03d678704f59936e099ddbb5f4d, type: 3}

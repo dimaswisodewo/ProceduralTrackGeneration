@@ -895,6 +895,9 @@ public class MapGenerator : MonoBehaviour {
             Material mat = new Material(buildingShader);
             mat.color = buildingColors[i];
             
+            // Enable GPU Instancing to dramatically reduce draw calls
+            mat.enableInstancing = true;
+            
             // Adjust smoothness or other shader properties if standard/lit
             if (buildingShader.name.Contains("Lit")) {
                 mat.SetFloat("_Smoothness", 0.2f);

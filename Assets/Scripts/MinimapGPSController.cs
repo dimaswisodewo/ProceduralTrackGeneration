@@ -13,6 +13,10 @@ public class MinimapGPSController : MonoBehaviour {
     public Color pickupIconColor = new Color(0f, 0.6f, 1f, 1f); // Vibrant Blue
     public Color deliveryIconColor = new Color(1f, 0.5f, 0f, 1f); // Vibrant Orange
 
+    [Header("Optimization Settings")]
+    [Tooltip("Target frame rate for the minimap rendering. Lower values save GPU power.")]
+    public float minimapRenderFPS = 30f;
+
     // Camera & RenderTexture
     private Camera minimapCamera;
     private RenderTexture minimapRT;
@@ -59,6 +63,9 @@ public class MinimapGPSController : MonoBehaviour {
 
         // 3. Setup LineRenderer for the GPS line
         SetupGPSLineRenderer();
+
+        // 4. Start Minimap rendering rate-limiter coroutine
+        StartCoroutine(MinimapRenderRoutine());
     }
 
     private void SetupMinimapCamera() {
@@ -88,6 +95,9 @@ public class MinimapGPSController : MonoBehaviour {
 
         // Force Minimap Camera to cull Layer 30 (Main Camera Only / Hide from Minimap)
         minimapCamera.cullingMask &= ~(1 << 30);
+
+        // Disable standard rendering behavior to manually render in a controlled rate-limited coroutine
+        minimapCamera.enabled = false;
 
         // Place camera high up pointing down
         UpdateCameraPosition();
@@ -256,10 +266,7 @@ public class MinimapGPSController : MonoBehaviour {
     private void Update() {
         if (carTransform == null) return;
 
-        // 1. Camera position/heading update
-        UpdateCameraPosition();
-
-        // 2. Query target and run GPS calculations
+        // 1. Query target and run GPS calculations
         PackageDeliverySystem deliverySystem = PackageDeliverySystem.Instance;
         DeliverySpot activeSpot = (deliverySystem != null) ? deliverySystem.ActiveSpot : null;
         bool isGameplayActive = deliverySystem != null && 
@@ -310,6 +317,18 @@ public class MinimapGPSController : MonoBehaviour {
             // Disable navigation elements when there is no target
             if (destIconObj != null && destIconObj.activeSelf) destIconObj.SetActive(false);
             if (pathLineRenderer.positionCount > 0) pathLineRenderer.positionCount = 0;
+        }
+    }
+
+    private System.Collections.IEnumerator MinimapRenderRoutine() {
+        while (true) {
+            if (minimapCamera != null && carTransform != null) {
+                // Keep the camera locked to the player's position and rotation right before rendering
+                UpdateCameraPosition();
+                minimapCamera.Render();
+            }
+            float waitTime = minimapRenderFPS > 0f ? 1f / minimapRenderFPS : 0.05f;
+            yield return new WaitForSeconds(waitTime);
         }
     }
 
