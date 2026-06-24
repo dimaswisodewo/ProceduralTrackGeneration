@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using DG.Tweening;
+using GridPos = MapGenerator.GridPos;
 
 public class NPCCarController : MonoBehaviour {
     [Header("Movement Settings")]
@@ -37,6 +38,7 @@ public class NPCCarController : MonoBehaviour {
     private float stuckTimer = 0f;
     private Vector3 lastPosition;
     private float frontZOffset = 1.3f;
+    private static readonly RaycastHit[] avoidanceHits = new RaycastHit[16];
 
 
 
@@ -283,12 +285,14 @@ public class NPCCarController : MonoBehaviour {
         Vector3 extents = raycastExtent;
         extents.z = 0.1f;
 
-        RaycastHit[] hits = Physics.BoxCastAll(origin, extents, direction, transform.rotation, checkDist);
+        int hitCount = Physics.BoxCastNonAlloc(origin, extents, direction, avoidanceHits, transform.rotation, checkDist);
         
         float minDistance = float.MaxValue;
         bool obstacleFound = false;
 
-        foreach (var hit in hits) {
+        for (int i = 0; i < hitCount; i++) {
+            RaycastHit hit = avoidanceHits[i];
+            
             // Ignore ourselves (any collider on this GameObject or its children)
             if (hit.collider == null || hit.collider.transform.root == transform.root) {
                 continue;
@@ -498,7 +502,40 @@ public class NPCCarController : MonoBehaviour {
     private MapGenerator.GridPos FindNearestRoadCell(Vector3 pos) {
         float cellSize = MapGenerator.Instance.cellSize;
         var roadCells = MapGenerator.Instance.RoadCells;
+        var spotCells = MapGenerator.Instance.SpotCells;
 
+        GridPos snapped = new GridPos(
+            Mathf.RoundToInt(pos.x / cellSize),
+            Mathf.RoundToInt(pos.z / cellSize)
+        );
+
+        // 1. Direct O(1) Hit
+        if (roadCells.Contains(snapped) || spotCells.Contains(snapped)) {
+            return snapped;
+        }
+
+        // 2. O(1) Radial Spiral Search (check up to 10 rings / ~30 units)
+        for (int r = 1; r <= 10; r++) {
+            // Check top and bottom rows
+            for (int dx = -r; dx <= r; dx++) {
+                GridPos pTop = new GridPos(snapped.x + dx, snapped.z + r);
+                if (roadCells.Contains(pTop) || spotCells.Contains(pTop)) return pTop;
+
+                GridPos pBottom = new GridPos(snapped.x + dx, snapped.z - r);
+                if (roadCells.Contains(pBottom) || spotCells.Contains(pBottom)) return pBottom;
+            }
+
+            // Check left and right columns (excluding corners)
+            for (int dz = -r + 1; dz <= r - 1; dz++) {
+                GridPos pRight = new GridPos(snapped.x + r, snapped.z + dz);
+                if (roadCells.Contains(pRight) || spotCells.Contains(pRight)) return pRight;
+
+                GridPos pLeft = new GridPos(snapped.x - r, snapped.z + dz);
+                if (roadCells.Contains(pLeft) || spotCells.Contains(pLeft)) return pLeft;
+            }
+        }
+
+        // 3. Fallback: Full linear scan
         MapGenerator.GridPos bestCell = new MapGenerator.GridPos(0, 0);
         float minD = float.MaxValue;
 

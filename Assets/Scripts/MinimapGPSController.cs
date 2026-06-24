@@ -399,14 +399,36 @@ public class MinimapGPSController : MonoBehaviour {
             Mathf.RoundToInt(pos.z / cellSize)
         );
 
-        // If the snapped coordinate is directly a road cell, use it immediately
         var roadCells = MapGenerator.Instance.RoadCells;
         var spotCells = MapGenerator.Instance.SpotCells;
+
+        // 1. Direct O(1) Hit
         if (roadCells.Contains(snapped) || spotCells.Contains(snapped)) {
             return snapped;
         }
 
-        // Otherwise find the absolute closest road cell
+        // 2. O(1) Radial Spiral Search (check up to 10 rings / ~30 units)
+        for (int r = 1; r <= 10; r++) {
+            // Check top and bottom rows
+            for (int dx = -r; dx <= r; dx++) {
+                GridPos pTop = new GridPos(snapped.x + dx, snapped.z + r);
+                if (roadCells.Contains(pTop) || spotCells.Contains(pTop)) return pTop;
+
+                GridPos pBottom = new GridPos(snapped.x + dx, snapped.z - r);
+                if (roadCells.Contains(pBottom) || spotCells.Contains(pBottom)) return pBottom;
+            }
+
+            // Check left and right columns (excluding corners)
+            for (int dz = -r + 1; dz <= r - 1; dz++) {
+                GridPos pRight = new GridPos(snapped.x + r, snapped.z + dz);
+                if (roadCells.Contains(pRight) || spotCells.Contains(pRight)) return pRight;
+
+                GridPos pLeft = new GridPos(snapped.x - r, snapped.z + dz);
+                if (roadCells.Contains(pLeft) || spotCells.Contains(pLeft)) return pLeft;
+            }
+        }
+
+        // 3. Fallback: Full linear scan
         GridPos closest = snapped;
         float minD = float.MaxValue;
         foreach (var rc in roadCells) {
@@ -427,84 +449,18 @@ public class MinimapGPSController : MonoBehaviour {
     }
 
     private List<GridPos> FindPathOnRoads(GridPos start, GridPos end) {
-        if (start.Equals(end)) {
-            return new List<GridPos> { start };
-        }
-
-        var roadCells = MapGenerator.Instance.RoadCells;
-        var spotCells = MapGenerator.Instance.SpotCells;
-
-        List<GridPos> openList = new List<GridPos>();
-        HashSet<GridPos> closedSet = new HashSet<GridPos>();
-
-        Dictionary<GridPos, GridPos> cameFrom = new Dictionary<GridPos, GridPos>();
-        Dictionary<GridPos, float> gScore = new Dictionary<GridPos, float>();
-        Dictionary<GridPos, float> fScore = new Dictionary<GridPos, float>();
-
-        gScore[start] = 0f;
-        fScore[start] = Heuristic(start, end);
-        openList.Add(start);
-
-        while (openList.Count > 0) {
-            GridPos current = openList[0];
-            float lowestF = fScore.ContainsKey(current) ? fScore[current] : float.MaxValue;
-            for (int i = 1; i < openList.Count; i++) {
-                GridPos p = openList[i];
-                float f = fScore.ContainsKey(p) ? fScore[p] : float.MaxValue;
-                if (f < lowestF) {
-                    lowestF = f;
-                    current = p;
-                }
-            }
-
-            if (current.Equals(end)) {
-                List<GridPos> path = new List<GridPos>();
-                path.Add(current);
-                while (cameFrom.ContainsKey(current)) {
-                    current = cameFrom[current];
-                    path.Add(current);
-                }
-                path.Reverse();
-                return path;
-            }
-
-            openList.Remove(current);
-            closedSet.Add(current);
-
-            GridPos[] neighbors = new GridPos[] {
-                new GridPos(current.x + 1, current.z),
-                new GridPos(current.x - 1, current.z),
-                new GridPos(current.x, current.z + 1),
-                new GridPos(current.x, current.z - 1)
-            };
-
-            foreach (GridPos neighbor in neighbors) {
-                if (closedSet.Contains(neighbor)) continue;
-
-                // Path can only traverse generated road cells or spot cells
-                if (!roadCells.Contains(neighbor) && !spotCells.Contains(neighbor)) {
-                    continue;
-                }
-
-                float tentativeGScore = gScore[current] + 1f;
-
-                if (!openList.Contains(neighbor)) {
-                    openList.Add(neighbor);
-                } else if (tentativeGScore >= (gScore.ContainsKey(neighbor) ? gScore[neighbor] : float.MaxValue)) {
-                    continue;
-                }
-
-                cameFrom[neighbor] = current;
-                gScore[neighbor] = tentativeGScore;
-                fScore[neighbor] = tentativeGScore + Heuristic(neighbor, end);
-            }
-        }
-
-        return null;
-    }
-
-    private float Heuristic(GridPos a, GridPos b) {
-        return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.z - b.z);
+        if (MapGenerator.Instance == null) return null;
+        return GridPathfinder.FindPath(
+            start,
+            end,
+            MapGenerator.Instance.RoadCells,
+            MapGenerator.Instance.SpotCells,
+            MapGenerator.Instance.MinX,
+            MapGenerator.Instance.MaxX,
+            MapGenerator.Instance.MinZ,
+            MapGenerator.Instance.MaxZ,
+            restrictToRoadsAndSpots: true
+        );
     }
 
     // --- Texture Generator Helpers ---

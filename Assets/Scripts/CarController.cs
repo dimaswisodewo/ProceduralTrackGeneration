@@ -71,9 +71,8 @@ public class CarController : MonoBehaviour {
     private float currentBoostMultiplier = 1f;
     private float sparkEmitTimer = 0f;
 
-    private Material driftSparkMat0;
-    private Material driftSparkMat1;
-    private Material driftSparkMat2;
+    private ParticleSystem sparkParticleSystem;
+    private ParticleSystem.EmitParams sparkEmitParams;
     private Material redMaterialInstance;
 
     private WheelFrictionCurve originalFrontLeftSideways;
@@ -112,11 +111,8 @@ public class CarController : MonoBehaviour {
     public float squashDuration = 0.3f;
     public bool showBounceSparks = true;
 
-    [Header("Object Pooling Settings")]
-    public int maxSparkPoolSize = 80;
-    private Queue<GameObject> sparkPool = new Queue<GameObject>();
-    private Material[] poolMaterials;
-    private Transform poolRoot;
+    private bool lastHandbrakeActive = false;
+    private bool lastDriftActive = false;
 
     private float lastBounceTime = 0f;
     private float stunTimer = 0f;
@@ -149,17 +145,7 @@ public class CarController : MonoBehaviour {
             originalRearRightForward = rearRight.collider.forwardFriction;
         }
 
-        // Create custom materials for drift sparks
-        Shader sparkShader = FindSparkShader();
-
-        driftSparkMat0 = new Material(sparkShader);
-        driftSparkMat0.color = new Color(0.9f, 0.65f, 1f); // Pastel Purple
-        
-        driftSparkMat1 = new Material(sparkShader);
-        driftSparkMat1.color = new Color(0.3f, 0.85f, 1f); // Pastel Cyan/Blue
-
-        driftSparkMat2 = new Material(sparkShader);
-        driftSparkMat2.color = new Color(1f, 0.4f, 0.4f); // Pastel Pink/Red
+        // Drift spark materials are not needed as we use the ParticleSystem with custom startColor.
 
         // Initialize safe position tracking at spawn point
         lastSafePosition = transform.position;
@@ -226,8 +212,8 @@ public class CarController : MonoBehaviour {
             }
         }
 
-        // Initialize collision sparks object pool
-        InitializeSparkPool();
+        // Initialize collision and drift sparks particle system
+        InitializeSparkParticleSystem();
     }
 
     public void SetInitialPosition(Vector3 position, Quaternion rotation) {
@@ -518,6 +504,10 @@ public class CarController : MonoBehaviour {
 
     private void UpdateWheelFrictions(bool handbrakeActive, bool driftActive) {
         if (!rearLeft.collider || !rearRight.collider || !frontLeft.collider || !frontRight.collider) return;
+
+        if (handbrakeActive == lastHandbrakeActive && driftActive == lastDriftActive) return;
+        lastHandbrakeActive = handbrakeActive;
+        lastDriftActive = driftActive;
 
         if (handbrakeActive) {
             SetWheelFriction(frontLeft.collider, 1f, 1f);
@@ -837,7 +827,53 @@ public class CarController : MonoBehaviour {
         squashCoroutine = null;
     }
 
-    private void InitializeSparkPool() {
+    private void InitializeSparkParticleSystem() {
+        GameObject psObj = new GameObject("CarSparksPS");
+        psObj.transform.parent = transform;
+        psObj.transform.localPosition = Vector3.zero;
+        psObj.transform.localRotation = Quaternion.identity;
+
+        sparkParticleSystem = psObj.AddComponent<ParticleSystem>();
+
+        // Stop auto-playing system to allow parameter configuration
+        sparkParticleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+        // Configure main module
+        var main = sparkParticleSystem.main;
+        main.duration = 1f;
+        main.loop = false;
+        main.startLifetime = 0.5f;
+        main.startSpeed = 5f;
+        main.startSize = 0.12f;
+        main.gravityModifier = 1f;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.playOnAwake = false;
+
+        // Configure emission module (rate over time 0, since we emit programmatically)
+        var emission = sparkParticleSystem.emission;
+        emission.rateOverTime = 0f;
+
+        // Configure shape module to turn off default shape dispersion
+        var shape = sparkParticleSystem.shape;
+        shape.enabled = false;
+
+        // Renderer setup
+        var psr = psObj.GetComponent<ParticleSystemRenderer>();
+        psr.renderMode = ParticleSystemRenderMode.Billboard;
+
+        // Find standard spark shader and create a default material
+        Shader shader = FindSparkShader();
+        Material psMat = new Material(shader);
+        psMat.color = Color.white;
+        if (psMat.HasProperty("_BaseColor")) {
+            psMat.SetColor("_BaseColor", Color.white);
+        }
+        psr.sharedMaterial = psMat;
+    }
+
+    private void SpawnCollisionSparks(Vector3 contactPoint, Vector3 contactNormal, float impactSpeed) {
+        if (sparkParticleSystem == null) return;
+
         Color[] pastelColors = new Color[] {
             new Color(1f, 0.65f, 0.65f), // Pastel Red/Pink
             new Color(0.65f, 0.85f, 1f), // Pastel Blue
@@ -847,148 +883,50 @@ public class CarController : MonoBehaviour {
             new Color(1f, 0.75f, 0.5f)   // Pastel Orange
         };
 
-        Shader sparkShader = FindSparkShader();
-
-        // Pre-create materials at startup to avoid runtime allocation
-        poolMaterials = new Material[pastelColors.Length];
-        for (int i = 0; i < pastelColors.Length; i++) {
-            poolMaterials[i] = new Material(sparkShader);
-            poolMaterials[i].color = pastelColors[i];
-        }
-
-        // Create a root transform to keep hierarchy clean
-        GameObject rootObj = new GameObject("SparkPoolRoot");
-        rootObj.transform.parent = transform;
-        poolRoot = rootObj.transform;
-
-        for (int i = 0; i < maxSparkPoolSize; i++) {
-            GameObject spark = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            if (spark.GetComponent<Collider>() != null) {
-                Destroy(spark.GetComponent<Collider>());
-            }
-            spark.transform.parent = poolRoot;
-            spark.SetActive(false);
-
-            Renderer rObj = spark.GetComponent<Renderer>();
-            if (rObj != null) {
-                rObj.sharedMaterial = poolMaterials[i % poolMaterials.Length];
-            }
-
-            sparkPool.Enqueue(spark);
-        }
-    }
-
-    private GameObject GetPooledSpark() {
-        if (sparkPool.Count > 0) {
-            GameObject spark = sparkPool.Dequeue();
-            if (spark != null) {
-                return spark;
-            }
-        }
-
-        // Expand pool if necessary (dynamic expansion fallback)
-        GameObject newSpark = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        if (newSpark.GetComponent<Collider>() != null) {
-            Destroy(newSpark.GetComponent<Collider>());
-        }
-        if (poolRoot != null) {
-            newSpark.transform.parent = poolRoot;
-        }
-        newSpark.SetActive(false);
-
-        Renderer rObj = newSpark.GetComponent<Renderer>();
-        if (rObj != null && poolMaterials != null && poolMaterials.Length > 0) {
-            rObj.sharedMaterial = poolMaterials[Random.Range(0, poolMaterials.Length)];
-        }
-
-        return newSpark;
-    }
-
-    private void ReturnSparkToPool(GameObject spark) {
-        if (spark == null) return;
-        spark.SetActive(false);
-        if (poolRoot != null && spark.transform.parent != poolRoot) {
-            spark.transform.parent = poolRoot;
-        }
-        sparkPool.Enqueue(spark);
-    }
-
-    private void SpawnCollisionSparks(Vector3 contactPoint, Vector3 contactNormal, float impactSpeed) {
         int count = Mathf.Clamp(Mathf.RoundToInt(impactSpeed * 1.2f), 6, 18);
 
         for (int i = 0; i < count; i++) {
-            GameObject spark = GetPooledSpark();
-            if (spark == null) continue;
-
-            spark.transform.position = contactPoint + contactNormal * 0.05f;
-            float size = Random.Range(0.06f, 0.16f);
-            spark.transform.localScale = new Vector3(size, size, size);
-            
-            // Set active to start rendering
-            spark.SetActive(true);
-
             Vector3 randomDir = (contactNormal + Random.insideUnitSphere * 0.5f).normalized;
             float speed = Random.Range(1.5f, impactSpeed * 0.5f);
             Vector3 velocity = randomDir * speed;
 
-            StartCoroutine(SparkRoutine(spark, velocity, Random.Range(0.3f, 0.65f)));
+            sparkEmitParams.position = contactPoint + contactNormal * 0.05f;
+            sparkEmitParams.velocity = velocity;
+            sparkEmitParams.startColor = pastelColors[Random.Range(0, pastelColors.Length)];
+            sparkEmitParams.startSize = Random.Range(0.06f, 0.16f);
+            sparkEmitParams.startLifetime = Random.Range(0.3f, 0.65f);
+
+            sparkParticleSystem.Emit(sparkEmitParams, 1);
         }
-    }
-
-    private System.Collections.IEnumerator SparkRoutine(GameObject spark, Vector3 velocity, float lifetime) {
-        float elapsed = 0f;
-        Vector3 initialScale = spark.transform.localScale;
-
-        while (elapsed < lifetime && spark != null && spark.activeSelf) {
-            elapsed += Time.deltaTime;
-            float t = elapsed / lifetime;
-
-            velocity += Physics.gravity * Time.deltaTime;
-            spark.transform.position += velocity * Time.deltaTime;
-            spark.transform.localScale = Vector3.Lerp(initialScale, Vector3.zero, t);
-
-            yield return null;
-        }
-
-        ReturnSparkToPool(spark);
     }
 
     private void EmitDriftSparks() {
-        Material targetMat = driftSparkMat0;
+        Color targetColor = new Color(0.9f, 0.65f, 1f); // Level 0: Pastel Purple
         if (driftChargeTime >= driftBoostLevel2Time) {
-            targetMat = driftSparkMat2;
+            targetColor = new Color(1f, 0.4f, 0.4f); // Level 2: Pastel Pink/Red
         } else if (driftChargeTime >= driftBoostLevel1Time) {
-            targetMat = driftSparkMat1;
+            targetColor = new Color(0.3f, 0.85f, 1f); // Level 1: Pastel Cyan/Blue
         }
 
-        EmitWheelSpark(rearLeft, targetMat);
-        EmitWheelSpark(rearRight, targetMat);
+        EmitWheelSparkColor(rearLeft, targetColor);
+        EmitWheelSparkColor(rearRight, targetColor);
     }
 
-    private void EmitWheelSpark(Wheel wheel, Material mat) {
-        if (!wheel.collider || !wheel.mesh) return;
-
-        GameObject spark = GetPooledSpark();
-        if (spark == null) return;
+    private void EmitWheelSparkColor(Wheel wheel, Color color) {
+        if (!wheel.collider || !wheel.mesh || sparkParticleSystem == null) return;
 
         Vector3 wheelBottom = wheel.mesh.position - wheel.mesh.up * wheel.collider.radius;
-        spark.transform.position = wheelBottom;
-        
-        float size = Random.Range(0.08f, 0.18f);
-        spark.transform.localScale = new Vector3(size, size, size);
-
-        Renderer r = spark.GetComponent<Renderer>();
-        if (r != null) {
-            r.sharedMaterial = mat;
-        }
-
-        spark.SetActive(true);
-
         Vector3 backDir = -transform.forward;
         Vector3 randomSpread = transform.right * Random.Range(-0.4f, 0.4f) + transform.up * Random.Range(0.1f, 0.5f);
         Vector3 velocity = (backDir + randomSpread).normalized * Random.Range(2.5f, 5.5f) + rb.linearVelocity * 0.4f;
 
-        StartCoroutine(SparkRoutine(spark, velocity, Random.Range(0.4f, 0.7f)));
+        sparkEmitParams.position = wheelBottom;
+        sparkEmitParams.velocity = velocity;
+        sparkEmitParams.startColor = color;
+        sparkEmitParams.startSize = Random.Range(0.08f, 0.18f);
+        sparkEmitParams.startLifetime = Random.Range(0.4f, 0.7f);
+
+        sparkParticleSystem.Emit(sparkEmitParams, 1);
     }
 
     private void TriggerDriftBoost(int level) {
@@ -1062,22 +1000,11 @@ public class CarController : MonoBehaviour {
         if (redMaterialInstance != null) {
             Destroy(redMaterialInstance);
         }
-        if (driftSparkMat0 != null) {
-            Destroy(driftSparkMat0);
-        }
-        if (driftSparkMat1 != null) {
-            Destroy(driftSparkMat1);
-        }
-        if (driftSparkMat2 != null) {
-            Destroy(driftSparkMat2);
-        }
-        if (poolMaterials != null) {
-            foreach (var mat in poolMaterials) {
-                if (mat != null) {
-                    Destroy(mat);
-                }
+        if (sparkParticleSystem != null && sparkParticleSystem.gameObject != null) {
+            var psr = sparkParticleSystem.GetComponent<ParticleSystemRenderer>();
+            if (psr != null && psr.sharedMaterial != null) {
+                Destroy(psr.sharedMaterial);
             }
-            poolMaterials = null;
         }
     }
 }

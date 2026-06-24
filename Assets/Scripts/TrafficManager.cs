@@ -273,83 +273,18 @@ public class TrafficManager : MonoBehaviour {
     }
 
     private List<MapGenerator.GridPos> FindPathOnRoads(MapGenerator.GridPos start, MapGenerator.GridPos end) {
-        if (start.Equals(end)) {
-            return new List<MapGenerator.GridPos> { start };
-        }
-
-        var roadCells = MapGenerator.Instance.RoadCells;
-        var spotCells = MapGenerator.Instance.SpotCells;
-
-        List<MapGenerator.GridPos> openList = new List<MapGenerator.GridPos>();
-        HashSet<MapGenerator.GridPos> closedSet = new HashSet<MapGenerator.GridPos>();
-
-        Dictionary<MapGenerator.GridPos, MapGenerator.GridPos> cameFrom = new Dictionary<MapGenerator.GridPos, MapGenerator.GridPos>();
-        Dictionary<MapGenerator.GridPos, float> gScore = new Dictionary<MapGenerator.GridPos, float>();
-        Dictionary<MapGenerator.GridPos, float> fScore = new Dictionary<MapGenerator.GridPos, float>();
-
-        gScore[start] = 0f;
-        fScore[start] = Heuristic(start, end);
-        openList.Add(start);
-
-        while (openList.Count > 0) {
-            MapGenerator.GridPos current = openList[0];
-            float lowestF = fScore.ContainsKey(current) ? fScore[current] : float.MaxValue;
-            for (int i = 1; i < openList.Count; i++) {
-                MapGenerator.GridPos p = openList[i];
-                float f = fScore.ContainsKey(p) ? fScore[p] : float.MaxValue;
-                if (f < lowestF) {
-                    lowestF = f;
-                    current = p;
-                }
-            }
-
-            if (current.Equals(end)) {
-                List<MapGenerator.GridPos> path = new List<MapGenerator.GridPos>();
-                path.Add(current);
-                while (cameFrom.ContainsKey(current)) {
-                    current = cameFrom[current];
-                    path.Add(current);
-                }
-                path.Reverse();
-                return path;
-            }
-
-            openList.Remove(current);
-            closedSet.Add(current);
-
-            MapGenerator.GridPos[] neighbors = new MapGenerator.GridPos[] {
-                new MapGenerator.GridPos(current.x + 1, current.z),
-                new MapGenerator.GridPos(current.x - 1, current.z),
-                new MapGenerator.GridPos(current.x, current.z + 1),
-                new MapGenerator.GridPos(current.x, current.z - 1)
-            };
-
-            foreach (MapGenerator.GridPos neighbor in neighbors) {
-                if (closedSet.Contains(neighbor)) continue;
-
-                if (!roadCells.Contains(neighbor) && !spotCells.Contains(neighbor)) {
-                    continue;
-                }
-
-                float tentativeGScore = gScore[current] + 1f;
-
-                if (!openList.Contains(neighbor)) {
-                    openList.Add(neighbor);
-                } else if (tentativeGScore >= (gScore.ContainsKey(neighbor) ? gScore[neighbor] : float.MaxValue)) {
-                    continue;
-                }
-
-                cameFrom[neighbor] = current;
-                gScore[neighbor] = tentativeGScore;
-                fScore[neighbor] = tentativeGScore + Heuristic(neighbor, end);
-            }
-        }
-
-        return null;
-    }
-
-    private float Heuristic(MapGenerator.GridPos a, MapGenerator.GridPos b) {
-        return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.z - b.z);
+        if (MapGenerator.Instance == null) return null;
+        return GridPathfinder.FindPath(
+            start,
+            end,
+            MapGenerator.Instance.RoadCells,
+            MapGenerator.Instance.SpotCells,
+            MapGenerator.Instance.MinX,
+            MapGenerator.Instance.MaxX,
+            MapGenerator.Instance.MinZ,
+            MapGenerator.Instance.MaxZ,
+            restrictToRoadsAndSpots: true
+        );
     }
 
     private MapGenerator.GridPos GetGridPosFromWorld(Vector3 worldPos) {
