@@ -76,7 +76,7 @@ public class UIManager : MonoBehaviour {
 
             Text label = healthSlider.GetComponentInChildren<Text>();
             if (label != null) {
-                label.text = "Document Integrity";
+                label.text = "Document Integrity: 100%";
             }
         }
 
@@ -234,19 +234,31 @@ public class UIManager : MonoBehaviour {
     public void UpdateHealthSlider(float currentHealth) {
         if (healthSlider == null) return;
 
-        healthSlider.value = currentHealth / 100f;
+        // Smoothly animate the health bar value using DOTween
+        healthSlider.DOComplete();
+        healthSlider.DOValue(currentHealth / 100f, 0.3f).SetEase(Ease.OutQuad);
 
+        // Resolve fill Image and smoothly animate its color based on current health
         Image fill = healthSlider.fillRect != null ? 
             healthSlider.fillRect.GetComponent<Image>() : null;
 
         if (fill != null) {
+            fill.DOComplete();
+            Color targetColor;
             if (currentHealth > 70f) {
-                fill.color = new Color(0.2f, 0.8f, 0.2f, 0.9f); // Green
+                targetColor = new Color(0.2f, 0.8f, 0.2f, 0.9f); // Green
             } else if (currentHealth > 30f) {
-                fill.color = new Color(0.9f, 0.65f, 0.1f, 0.9f); // Yellow/Orange
+                targetColor = new Color(0.9f, 0.65f, 0.1f, 0.9f); // Yellow/Orange
             } else {
-                fill.color = new Color(0.9f, 0.2f, 0.2f, 0.9f); // Red
+                targetColor = new Color(0.9f, 0.2f, 0.2f, 0.9f); // Red
             }
+            fill.DOColor(targetColor, 0.3f);
+        }
+
+        // Dynamically update the Text label to show the correct health percentage
+        Text label = healthSlider.GetComponentInChildren<Text>();
+        if (label != null) {
+            label.text = $"Document Integrity: {currentHealth:F0}%";
         }
     }
 

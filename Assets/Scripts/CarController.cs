@@ -127,6 +127,9 @@ public class CarController : MonoBehaviour {
         gameObject.tag = "Player";
         rb = GetComponent<Rigidbody>();
         
+        // Enable Rigidbody interpolation for smooth camera follow and rendering
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        
         // Lower the center of mass to prevent rolling over easily
         rb.centerOfMass = centerOfMassOffset;
 
