@@ -636,6 +636,10 @@ public class MapGenerator : MonoBehaviour {
             float scaleFactor = cellSize / 2f;
             spawned.transform.localScale = new Vector3(localScale.x * scaleFactor, localScale.y, localScale.z * scaleFactor);
             
+            if (CullingManager.Instance != null) {
+                CullingManager.Instance.RegisterCullable(spawned, position);
+            }
+            
             // If the piece has a RoadPiece component, we can initialize its fields if needed
             RoadPiece roadPiece = spawned.GetComponent<RoadPiece>();
             if (roadPiece != null) {
@@ -907,6 +911,10 @@ public class MapGenerator : MonoBehaviour {
         buildingParent.tag = "Building";
         buildingParent.transform.position = position;
         buildingParent.transform.parent = transform;
+
+        if (CullingManager.Instance != null) {
+            CullingManager.Instance.RegisterCullable(buildingParent, position);
+        }
 
         // Choose a random shared material for this building
         Material buildingMat = (buildingMaterials != null && buildingMaterials.Count > 0)
