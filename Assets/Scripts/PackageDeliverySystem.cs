@@ -129,6 +129,11 @@ public class PackageDeliverySystem : MonoBehaviour {
                     UIManager.Instance.UpdateHealthSlider(packageHealth);
                 }
                 if (pointerArrow != null) pointerArrow.SetActive(false);
+                // Trigger a dramatic screen shake & impact shock zoom
+                if (CameraFollow.Instance != null) {
+                    CameraFollow.Instance.TriggerShake(0.6f, 0.45f);
+                    CameraFollow.Instance.TriggerShockZoom(0.5f, -20f);
+                }
                 break;
 
             case DeliveryState.GameOver:

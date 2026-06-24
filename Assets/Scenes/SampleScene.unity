@@ -467,7 +467,7 @@ MonoBehaviour:
   enableSpeedFOV: 1
   minFOV: 60
   maxFOV: 78
-  maxSpeedForFOV: 25
+  maxSpeedForFOV: 7
 --- !u!114 &330585549
 MonoBehaviour:
   m_ObjectHideFlags: 0

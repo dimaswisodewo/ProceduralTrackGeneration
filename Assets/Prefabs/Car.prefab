@@ -465,7 +465,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CarController
   driveType: 0
   motorTorque: 900
-  maxSpeed: 6
+  maxSpeed: 7
   brakeForce: 3000
   handbrakeForce: 4000
   maxSteerAngle: 30
@@ -490,6 +490,8 @@ MonoBehaviour:
   driftBoostLevel2Duration: 1
   driftBoostLevel1SpeedMult: 1.25
   driftBoostLevel2SpeedMult: 1.45
+  driftBoostLevel1FOVOffset: 14
+  driftBoostLevel2FOVOffset: 24
   sparkEmitInterval: 0.06
   frontLeft:
     collider: {fileID: 9018817181352413714}

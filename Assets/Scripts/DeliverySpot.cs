@@ -1,4 +1,5 @@
 using UnityEngine;
+using DG.Tweening;
 
 public class DeliverySpot : MonoBehaviour {
     public bool isDeliveryTarget = false;
@@ -6,6 +7,7 @@ public class DeliverySpot : MonoBehaviour {
 
     private GameObject ringVisual;
     private Material ringMaterial;
+    private Tween pulseTween;
 
     private void Start() {
         // 1. Create a dedicated trigger collider for checking player arrival
@@ -57,6 +59,11 @@ public class DeliverySpot : MonoBehaviour {
     private void UpdateVisuals() {
         if (ringMaterial == null) return;
 
+        if (pulseTween != null) {
+            pulseTween.Kill();
+            pulseTween = null;
+        }
+
         Color targetColor;
         if (isPickupTarget) {
             // Glowing vibrant blue for package pickup
@@ -70,6 +77,19 @@ public class DeliverySpot : MonoBehaviour {
         }
 
         ringMaterial.color = targetColor;
+
+        if (ringVisual != null) {
+            if (isPickupTarget || isDeliveryTarget) {
+                // Animate scale to pulsate
+                ringVisual.transform.localScale = new Vector3(3f, 0.02f, 3f);
+                pulseTween = ringVisual.transform.DOScale(new Vector3(3.6f, 0.02f, 3.6f), 0.8f)
+                    .SetLoops(-1, LoopType.Yoyo)
+                    .SetEase(Ease.InOutSine);
+            } else {
+                // Settle back to default scale for inactive zones
+                ringVisual.transform.localScale = new Vector3(3f, 0.02f, 3f);
+            }
+        }
     }
 
     private void OnTriggerEnter(Collider other) {
@@ -83,6 +103,9 @@ public class DeliverySpot : MonoBehaviour {
     }
 
     private void OnDestroy() {
+        if (pulseTween != null) {
+            pulseTween.Kill();
+        }
         if (ringMaterial != null) {
             Destroy(ringMaterial);
         }

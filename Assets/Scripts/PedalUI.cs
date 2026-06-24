@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using DG.Tweening;
 
 public class PedalUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler {
     public enum PedalType {
@@ -14,13 +15,22 @@ public class PedalUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler {
 
     public float InputValue { get; private set; }
     private bool isPressed;
+    private Vector3 originalScale;
+
+    private void Awake() {
+        originalScale = transform.localScale;
+    }
 
     public void OnPointerDown(PointerEventData eventData) {
         isPressed = true;
+        transform.DOComplete();
+        transform.DOScale(originalScale * 0.9f, 0.1f).SetEase(Ease.OutQuad);
     }
 
     public void OnPointerUp(PointerEventData eventData) {
         isPressed = false;
+        transform.DOComplete();
+        transform.DOScale(originalScale, 0.1f).SetEase(Ease.OutQuad);
     }
 
     private void Update() {
@@ -60,5 +70,9 @@ public class PedalUI : MonoBehaviour, IPointerDownHandler, IPointerUpHandler {
                     break;
             }
         }
+    }
+
+    private void OnDestroy() {
+        transform.DOKill();
     }
 }

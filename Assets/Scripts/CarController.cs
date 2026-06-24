@@ -59,6 +59,8 @@ public class CarController : MonoBehaviour {
     public float driftBoostLevel2Duration = 1.0f;
     public float driftBoostLevel1SpeedMult = 1.25f;
     public float driftBoostLevel2SpeedMult = 1.45f;
+    public float driftBoostLevel1FOVOffset = 14f;
+    public float driftBoostLevel2FOVOffset = 24f;
 
     [Header("Drift Visuals")]
     public float sparkEmitInterval = 0.06f;
@@ -973,9 +975,11 @@ public class CarController : MonoBehaviour {
         // Apply velocity impulse forward
         rb.AddForce(transform.forward * boostForce, ForceMode.VelocityChange);
 
-        // Screen shake
+        // Screen shake & Boost FOV
         if (CameraFollow.Instance != null) {
-            CameraFollow.Instance.TriggerShake(0.2f, level == 2 ? 0.22f : 0.13f);
+            CameraFollow.Instance.TriggerShake(0.25f, level == 2 ? 0.22f : 0.13f);
+            float fovOffset = level == 2 ? driftBoostLevel2FOVOffset : driftBoostLevel1FOVOffset;
+            CameraFollow.Instance.TriggerBoostFOV(duration, fovOffset);
         }
 
         // Squash & Stretch speed effect

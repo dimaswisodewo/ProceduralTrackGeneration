@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using DG.Tweening;
 
 public class UIManager : MonoBehaviour {
     private static UIManager instance;
@@ -45,6 +46,11 @@ public class UIManager : MonoBehaviour {
 
     private Coroutine warningCoroutine;
     private Coroutine statusSuccessCoroutine;
+
+    private Tween damageTextTween;
+    private Tween damageTextScaleTween;
+    private Tween objectiveTween;
+    private Tween objectiveScaleTween;
 
     private void Awake() {
         if (instance == null) {
@@ -171,6 +177,10 @@ public class UIManager : MonoBehaviour {
                     if (gameOverText != null) {
                         gameOverText.text = "DOCUMENTS RUINED! Press R to Respawn";
                     }
+                    gameOverTextObject.transform.DOComplete();
+                    gameOverTextObject.transform.localScale = Vector3.zero;
+                    gameOverTextObject.transform.DOScale(1f, 0.5f).SetEase(Ease.OutElastic);
+
                     if (objectivesTextObject != null) objectivesTextObject.SetActive(false);
                     if (damageTextObject != null) damageTextObject.SetActive(false);
                     if (victoryTextObject != null) victoryTextObject.SetActive(false);
@@ -199,6 +209,10 @@ public class UIManager : MonoBehaviour {
                     if (victoryText != null) {
                         victoryText.text = "VICTORY! All stamps collected and delivered! Press R to restart.";
                     }
+                    victoryTextObject.transform.DOComplete();
+                    victoryTextObject.transform.localScale = Vector3.zero;
+                    victoryTextObject.transform.DOScale(1f, 0.7f).SetEase(Ease.OutElastic);
+
                     if (objectivesTextObject != null) objectivesTextObject.SetActive(false);
                     if (damageTextObject != null) damageTextObject.SetActive(false);
                     if (gameOverTextObject != null) gameOverTextObject.SetActive(false);
@@ -239,6 +253,9 @@ public class UIManager : MonoBehaviour {
     public void UpdateScore(int collected, int total) {
         if (scoreText != null) {
             scoreText.text = $"STAMPS: {collected} / {total}";
+            scoreText.transform.DOComplete();
+            scoreText.transform.localScale = Vector3.one;
+            scoreText.transform.DOPunchScale(new Vector3(0.25f, 0.25f, 0.25f), 0.35f, 10, 0.5f);
         }
     }
 
@@ -255,40 +272,59 @@ public class UIManager : MonoBehaviour {
     }
 
     public void FlashDamageText(string msg) {
-        if (warningCoroutine != null) {
-            StopCoroutine(warningCoroutine);
-        }
-        warningCoroutine = StartCoroutine(FlashWarningTextCoroutine(msg));
-    }
+        if (damageTextObject == null || damageText == null) return;
 
-    private IEnumerator FlashWarningTextCoroutine(string msg) {
-        if (damageTextObject != null && damageText != null) {
-            damageText.text = msg;
-            damageTextObject.SetActive(true);
-            yield return new WaitForSeconds(1.5f);
-            if (damageText.text == msg) {
-                damageTextObject.SetActive(false);
-            }
+        if (damageTextTween != null) damageTextTween.Kill();
+        if (damageTextScaleTween != null) damageTextScaleTween.Kill();
+
+        damageText.text = msg;
+        damageTextObject.SetActive(true);
+
+        Color c = damageText.color;
+        c.a = 1f;
+        damageText.color = c;
+        damageTextObject.transform.localScale = Vector3.zero;
+
+        damageTextScaleTween = damageTextObject.transform.DOScale(1.2f, 0.2f)
+            .SetEase(Ease.OutBack)
+            .OnComplete(() => {
+                damageTextObject.transform.DOScale(1.0f, 0.15f)
+                    .SetDelay(1.0f)
+                    .OnComplete(() => {
+                        damageTextTween = damageText.DOFade(0f, 0.3f);
+                        damageTextScaleTween = damageTextObject.transform.DOScale(0.8f, 0.3f)
+                            .OnComplete(() => damageTextObject.SetActive(false));
+                    });
+            });
+
+        if (healthSlider != null) {
+            healthSlider.transform.DOComplete();
+            healthSlider.transform.DOPunchScale(new Vector3(0.12f, 0.12f, 0.12f), 0.4f, 12, 0.8f);
+            healthSlider.transform.DOPunchPosition(new Vector3(8f, 0f, 0f), 0.4f, 12, 0.8f);
         }
     }
 
     public void FlashObjectiveSuccessText(string msg, string nextObjectiveText, Color nextObjectiveColor) {
-        if (statusSuccessCoroutine != null) {
-            StopCoroutine(statusSuccessCoroutine);
-        }
-        statusSuccessCoroutine = StartCoroutine(FlashStatusSuccessCoroutine(msg, nextObjectiveText, nextObjectiveColor));
-    }
+        if (objectivesTextObject == null || objectivesText == null) return;
 
-    private IEnumerator FlashStatusSuccessCoroutine(string msg, string nextObjectiveText, Color nextObjectiveColor) {
-        if (objectivesTextObject != null && objectivesText != null) {
-            objectivesText.text = msg;
-            objectivesText.color = Color.green;
-            yield return new WaitForSeconds(2.0f);
-            if (objectivesText.text == msg) {
-                objectivesText.text = nextObjectiveText;
-                objectivesText.color = nextObjectiveColor;
-            }
-        }
+        if (objectiveTween != null) objectiveTween.Kill();
+        if (objectiveScaleTween != null) objectiveScaleTween.Kill();
+
+        objectivesText.text = msg;
+        objectivesText.color = Color.green;
+
+        objectivesTextObject.transform.localScale = Vector3.one;
+        objectiveScaleTween = objectivesTextObject.transform.DOPunchScale(new Vector3(0.2f, 0.2f, 0.2f), 0.4f, 8, 0.5f)
+            .OnComplete(() => {
+                objectiveTween = DOTween.Sequence()
+                    .AppendInterval(1.6f)
+                    .Append(objectivesText.DOColor(nextObjectiveColor, 0.3f))
+                    .OnStart(() => {
+                        objectivesText.text = nextObjectiveText;
+                        objectivesTextObject.transform.localScale = Vector3.one;
+                        objectivesTextObject.transform.DOPunchScale(new Vector3(0.1f, 0.1f, 0.1f), 0.3f);
+                    });
+            });
     }
 
     private Text GetOrCreateUIText(string name, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment) {
@@ -330,7 +366,35 @@ public class UIManager : MonoBehaviour {
 
     public void SetGenerationPanelActive(bool active) {
         if (generationPanel != null) {
-            generationPanel.SetActive(active);
+            Image img = generationPanel.GetComponent<Image>();
+            if (img != null) {
+                img.DOComplete();
+                if (active) {
+                    generationPanel.SetActive(true);
+                    Color c = img.color;
+                    c.a = 0f;
+                    img.color = c;
+                    img.DOFade(1f, 0.4f).SetUpdate(true);
+                } else {
+                    img.DOFade(0f, 0.5f).SetUpdate(true)
+                        .OnComplete(() => generationPanel.SetActive(false));
+                }
+            } else {
+                generationPanel.SetActive(active);
+            }
+        }
+    }
+
+    private void OnDestroy() {
+        if (damageTextTween != null) damageTextTween.Kill();
+        if (damageTextScaleTween != null) damageTextScaleTween.Kill();
+        if (objectiveTween != null) objectiveTween.Kill();
+        if (objectiveScaleTween != null) objectiveScaleTween.Kill();
+        if (gameOverTextObject != null) gameOverTextObject.transform.DOKill();
+        if (victoryTextObject != null) victoryTextObject.transform.DOKill();
+        if (generationPanel != null) {
+            Image img = generationPanel.GetComponent<Image>();
+            if (img != null) img.DOKill();
         }
     }
 }
