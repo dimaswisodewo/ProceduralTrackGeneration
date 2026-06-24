@@ -122,6 +122,7 @@ public class CarController : MonoBehaviour {
     private Coroutine squashCoroutine;
 
     private void Start() {
+        gameObject.tag = "Player";
         rb = GetComponent<Rigidbody>();
         
         // Lower the center of mass to prevent rolling over easily

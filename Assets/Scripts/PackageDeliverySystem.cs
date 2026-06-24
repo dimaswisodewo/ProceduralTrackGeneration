@@ -16,17 +16,9 @@ public class PackageDeliverySystem : MonoBehaviour {
     public float packageHealth = 100f; // Referred to as Document Integrity
     private int score = 0;
 
-    [Header("Wobbliness Settings")]
-    public float wobbleThreshold = 0.8f; // Angular velocity magnitude limit on pitch/roll (rad/s)
-    public float wobbleDamageMultiplier = 5.0f; // Damage rate per second of excess wobble
-
-    [Header("Tilt Settings")]
-    public float maxAllowedTiltAngle = 30.0f; // Tilting beyond this angle damages package (degrees)
-    public float tiltDamageRate = 5.0f; // Damage rate per second when tilted
-
     [Header("Collision Damage")]
-    public float minCollisionSpeed = 6.0f; // Shocks below this relative velocity do not cause damage
-    public float collisionDamageMultiplier = 8.0f; // Damage multiplier for high impacts
+    public float minCollisionSpeed = 3.0f; // Shocks below this relative velocity do not cause damage
+    public float collisionDamageMultiplier = 25.0f; // Damage multiplier for high impacts
 
     // References
     private Rigidbody carRigidbody;
@@ -48,7 +40,7 @@ public class PackageDeliverySystem : MonoBehaviour {
     // Navigation Arrow
     private GameObject pointerArrow;
     private Material pointerArrowMaterial;
-    private float warningHideTime = 0f;
+
     private float spawnTime;
 
     private void Awake() {
@@ -246,9 +238,7 @@ public class PackageDeliverySystem : MonoBehaviour {
                 collectedStampSpots.Add(spot);
                 spot.SetAsTarget(false); // Disable ring (turn grey)
 
-                // Restore integrity to 100% on collection
-                packageHealth = 100f;
-                UpdateSliderColor();
+                // Restore integrity to 100% on collection is disabled per request
 
                 UpdateScoreText();
 
@@ -301,62 +291,7 @@ public class PackageDeliverySystem : MonoBehaviour {
         }
     }
 
-    private void FixedUpdate() {
-        if (currentState != DeliveryState.CollectingStamps && currentState != DeliveryState.HeadingToFinalDestination) return;
-        if (Time.time - spawnTime < 5f) return;
 
-        if (carRigidbody == null) return;
-
-        // 1. Calculate local angular speed in pitch and roll
-        Vector3 localAngVel = transform.InverseTransformDirection(carRigidbody.angularVelocity);
-        float pitchRate = Mathf.Abs(localAngVel.x);
-        float rollRate = Mathf.Abs(localAngVel.z);
-        float wobbleSpeed = Mathf.Max(pitchRate, rollRate);
-
-        bool isWobbling = wobbleSpeed > wobbleThreshold;
-        bool isTilted = false;
-
-        // 2. Calculate tilt angle deviation from vertical
-        float tiltAngle = Vector3.Angle(transform.up, Vector3.up);
-        if (tiltAngle > maxAllowedTiltAngle) {
-            isTilted = true;
-        }
-
-        // Apply damage if unstable
-        if (isWobbling || isTilted) {
-            float totalDamageRate = 0f;
-            string alertMsg = "";
-
-            if (isWobbling) {
-                float excess = wobbleSpeed - wobbleThreshold;
-                totalDamageRate += excess * wobbleDamageMultiplier;
-                alertMsg = "WARNING: UNSTABLE DRIVING!";
-            }
-            if (isTilted) {
-                float excessTilt = tiltAngle - maxAllowedTiltAngle;
-                totalDamageRate += (excessTilt / (90f - maxAllowedTiltAngle)) * tiltDamageRate;
-                if (alertMsg == "") alertMsg = "WARNING: VEHICLE TILTED!";
-            }
-
-            TakeDamage(totalDamageRate * Time.fixedDeltaTime);
-            warningHideTime = Time.time + 2.0f; // Keep warning visible for 2.0s after stabilizing
-
-            // Flashing warning text
-            if (warningText != null) {
-                warningText.text = alertMsg;
-                warningText.gameObject.SetActive(Mathf.FloorToInt(Time.time * 8f) % 2 == 0);
-            }
-        } else {
-            // Turn off warning unless showing a recent impact message or still in the cooldown period
-            if (warningText != null && !warningText.text.StartsWith("IMPACT")) {
-                if (Time.time < warningHideTime) {
-                    warningText.gameObject.SetActive(true); // Keep it visible/solid during the cooldown
-                } else {
-                    warningText.gameObject.SetActive(false);
-                }
-            }
-        }
-    }
 
     private void Update() {
         if (currentState == DeliveryState.CollectingStamps) {
@@ -399,6 +334,15 @@ public class PackageDeliverySystem : MonoBehaviour {
 
     private void OnCollisionEnter(Collision collision) {
         if (currentState != DeliveryState.CollectingStamps && currentState != DeliveryState.HeadingToFinalDestination) return;
+
+        // Collision damage only applies to Building and Spot tagged objects
+        bool isBuilding = collision.gameObject.CompareTag("Building") || 
+                          (collision.transform.parent != null && collision.transform.parent.CompareTag("Building"));
+        bool isSpot = collision.gameObject.CompareTag("Spot") || 
+                      (collision.transform.parent != null && collision.transform.parent.CompareTag("Spot")) ||
+                      collision.gameObject.GetComponentInParent<DeliverySpot>() != null;
+
+        if (!isBuilding && !isSpot) return;
 
         float impactSpeed = collision.relativeVelocity.magnitude;
         if (impactSpeed > minCollisionSpeed) {

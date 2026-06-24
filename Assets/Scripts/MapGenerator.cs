@@ -113,6 +113,7 @@ public class MapGenerator : MonoBehaviour {
                 }
             }
             if (carObj != null) {
+                carObj.tag = "Player";
                 deliverySystem = carObj.AddComponent<PackageDeliverySystem>();
             }
         }
@@ -819,6 +820,7 @@ public class MapGenerator : MonoBehaviour {
         }
 
         if (spawnedSpotObj != null) {
+            spawnedSpotObj.tag = "Spot";
             DeliverySpot spotComponent = spawnedSpotObj.AddComponent<DeliverySpot>();
             spawnedDeliverySpots.Add(spotComponent);
         }
@@ -902,6 +904,7 @@ public class MapGenerator : MonoBehaviour {
     void SpawnBuilding(Vector3 position, bool addCollider) {
         // Create parent building object
         GameObject buildingParent = new GameObject("Building_" + Mathf.RoundToInt(position.x) + "_" + Mathf.RoundToInt(position.z));
+        buildingParent.tag = "Building";
         buildingParent.transform.position = position;
         buildingParent.transform.parent = transform;
 

@@ -1054,7 +1054,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapGenerator
   numberOfNodes: 150
-  numberOfSpots: 7
+  numberOfSpots: 11
   mapSize: {x: 200, y: 200}
   cellSize: 4
   straightPrefab: {fileID: 3998984614176541144, guid: 39d3951d82d1541d78bbbd7bb07319b6, type: 3}
