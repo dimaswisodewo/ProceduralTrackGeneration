@@ -43,6 +43,8 @@ public class UIManager : MonoBehaviour {
     private Text objectivesText;
     private Text gameOverText;
     private Text victoryText;
+    private Image healthBarFillImage;
+    private Text healthBarText;
 
     private Coroutine warningCoroutine;
     private Coroutine statusSuccessCoroutine;
@@ -74,9 +76,10 @@ public class UIManager : MonoBehaviour {
             healthSlider.maxValue = 1f;
             healthSlider.value = 1f;
 
-            Text label = healthSlider.GetComponentInChildren<Text>();
-            if (label != null) {
-                label.text = "Document Integrity: 100%";
+            healthBarFillImage = healthSlider.fillRect != null ? healthSlider.fillRect.GetComponent<Image>() : null;
+            healthBarText = healthSlider.GetComponentInChildren<Text>();
+            if (healthBarText != null) {
+                healthBarText.text = "Document Integrity: 100%";
             }
         }
 
@@ -239,11 +242,8 @@ public class UIManager : MonoBehaviour {
         healthSlider.DOValue(currentHealth / 100f, 0.3f).SetEase(Ease.OutQuad);
 
         // Resolve fill Image and smoothly animate its color based on current health
-        Image fill = healthSlider.fillRect != null ? 
-            healthSlider.fillRect.GetComponent<Image>() : null;
-
-        if (fill != null) {
-            fill.DOComplete();
+        if (healthBarFillImage != null) {
+            healthBarFillImage.DOComplete();
             Color targetColor;
             if (currentHealth > 70f) {
                 targetColor = new Color(0.2f, 0.8f, 0.2f, 0.9f); // Green
@@ -252,13 +252,12 @@ public class UIManager : MonoBehaviour {
             } else {
                 targetColor = new Color(0.9f, 0.2f, 0.2f, 0.9f); // Red
             }
-            fill.DOColor(targetColor, 0.3f);
+            healthBarFillImage.DOColor(targetColor, 0.3f);
         }
 
         // Dynamically update the Text label to show the correct health percentage
-        Text label = healthSlider.GetComponentInChildren<Text>();
-        if (label != null) {
-            label.text = $"Document Integrity: {currentHealth:F0}%";
+        if (healthBarText != null) {
+            healthBarText.text = $"Document Integrity: {currentHealth:F0}%";
         }
     }
 

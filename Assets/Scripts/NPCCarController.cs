@@ -434,24 +434,25 @@ public class NPCCarController : MonoBehaviour {
         if (other.gameObject.CompareTag("NPC") || (other.transform.parent != null && other.transform.parent.CompareTag("NPC"))) {
             NPCCarController otherNPC = other.gameObject.GetComponentInParent<NPCCarController>();
             if (otherNPC != null && otherNPC != this) {
-            // Let OnCollisionEnter handle it if either is already spun out / recovering (since they become dynamic physics bodies)
-            if (otherNPC.isSpunOut || otherNPC.isRecovering || isSpunOut || isRecovering) return;
+                // Let OnCollisionEnter handle it if either is already spun out / recovering (since they become dynamic physics bodies)
+                if (otherNPC.isSpunOut || otherNPC.isRecovering || isSpunOut || isRecovering) return;
 
-            // Minor bump / Fender bender -> Both shock-pause and recoil slightly using DOTween
-            // This prevents them from flying in the air like they do when hit by the player
-            TriggerShockPause(1.5f);
-            otherNPC.TriggerShockPause(1.5f);
+                // Minor bump / Fender bender -> Both shock-pause and recoil slightly using DOTween
+                // This prevents them from flying in the air like they do when hit by the player
+                TriggerShockPause(1.5f);
+                otherNPC.TriggerShockPause(1.5f);
 
-            Vector3 pushDirection = (transform.position - otherNPC.transform.position).normalized;
-            pushDirection.y = 0f;
-            if (pushDirection.sqrMagnitude < 0.001f) {
-                pushDirection = -transform.forward;
+                Vector3 pushDirection = (transform.position - otherNPC.transform.position).normalized;
+                pushDirection.y = 0f;
+                if (pushDirection.sqrMagnitude < 0.001f) {
+                    pushDirection = -transform.forward;
+                }
+
+                // Push this NPC backward slightly
+                transform.DOMove(transform.position + pushDirection * 0.3f, 0.25f).SetEase(Ease.OutQuad);
+                // Push the other NPC in the opposite direction slightly
+                otherNPC.transform.DOMove(otherNPC.transform.position - pushDirection * 0.3f, 0.25f).SetEase(Ease.OutQuad);
             }
-
-            // Push this NPC backward slightly
-            transform.DOMove(transform.position + pushDirection * 0.3f, 0.25f).SetEase(Ease.OutQuad);
-            // Push the other NPC in the opposite direction slightly
-            otherNPC.transform.DOMove(otherNPC.transform.position - pushDirection * 0.3f, 0.25f).SetEase(Ease.OutQuad);
         }
     }
 

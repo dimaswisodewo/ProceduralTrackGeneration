@@ -223,16 +223,20 @@ public class TrafficManager : MonoBehaviour {
         float cellSize = MapGenerator.Instance.cellSize;
         Vector3 playerPos = playerTransform.position;
 
+        float minSqr = minSpawnDistance * minSpawnDistance;
+        float maxSqr = maxSpawnDistance * maxSpawnDistance;
+        float occupyRadiusSqr = (cellSize * 0.8f) * (cellSize * 0.8f);
+
         List<MapGenerator.GridPos> candidates = new List<MapGenerator.GridPos>();
         foreach (var cell in roadCells) {
             Vector3 cellPos = new Vector3(cell.x * cellSize, 0f, cell.z * cellSize);
-            float dist = Vector3.Distance(playerPos, cellPos);
+            float sqrDist = (playerPos - cellPos).sqrMagnitude;
 
-            if (dist >= minSpawnDistance && dist <= maxSpawnDistance) {
+            if (sqrDist >= minSqr && sqrDist <= maxSqr) {
                 // Ensure we don't spawn right on top of another NPC
                 bool isOccupied = false;
                 foreach (var npc in activeNPCs) {
-                    if (npc != null && Vector3.Distance(npc.transform.position, cellPos) < cellSize * 0.8f) {
+                    if (npc != null && (npc.transform.position - cellPos).sqrMagnitude < occupyRadiusSqr) {
                         isOccupied = true;
                         break;
                     }

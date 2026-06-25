@@ -374,7 +374,7 @@ public class MinimapGPSController : MonoBehaviour {
             Vector3 cellWorld = new Vector3(cellPath[i].x * cellSize, pathHeightOffset, cellPath[i].z * cellSize);
             
             // Avoid adding cell point if it's extremely close to the car position to avoid jagged start line
-            if (i == 0 && Vector3.Distance(carPathPos, cellWorld) < 1.0f) {
+            if (i == 0 && (carPathPos - cellWorld).sqrMagnitude < 1.0f) {
                 continue;
             }
             points.Add(cellWorld);
@@ -383,7 +383,7 @@ public class MinimapGPSController : MonoBehaviour {
         // Add active spot target position
         Vector3 targetPathPos = targetPos;
         targetPathPos.y = pathHeightOffset;
-        if (points.Count > 0 && Vector3.Distance(points[points.Count - 1], targetPathPos) > 0.5f) {
+        if (points.Count > 0 && (points[points.Count - 1] - targetPathPos).sqrMagnitude > 0.25f) {
             points.Add(targetPathPos);
         }
 
