@@ -1213,7 +1213,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MapGenerator
   numberOfNodes: 60
   numberOfSpots: 11
-  mapSize: {x: 240, y: 240}
+  mapSize: {x: 400, y: 400}
   cellSize: 4
   straightPrefab: {fileID: 3998984614176541144, guid: 39d3951d82d1541d78bbbd7bb07319b6, type: 3}
   turnPrefab: {fileID: 3034595356720907573, guid: dcfed03d678704f59936e099ddbb5f4d, type: 3}

@@ -54,6 +54,9 @@ public class DialogueLine {
     [Tooltip("The line of dialogue to be printed. Supports standard Unity Rich Text (e.g. <b>, <i>, <color=...>).")]
     public string dialogueText;
 
+    [Tooltip("Optional translation of the dialogue to be printed below/alongside the primary text.")]
+    public string translationText;
+
     [Tooltip("Multiplier for the base text writing speed. Higher values write faster.")]
     public float typingSpeedMultiplier = 1f;
 
@@ -83,6 +86,35 @@ public struct ImagePanelConfig {
 public class DialogueConversation : ScriptableObject {
     [Tooltip("Lines of dialogue in the conversation.")]
     public List<DialogueLine> lines = new List<DialogueLine>();
+}
+
+/// <summary>
+/// Defines the type of speaker for JSON-loaded dialogues.
+/// </summary>
+public enum SpeakerType {
+    Person,
+    Environment
+}
+
+/// <summary>
+/// Defines the screen position of the speaker for JSON-loaded dialogues.
+/// </summary>
+public enum DialoguePosition {
+    Left,
+    Right
+}
+
+/// <summary>
+/// Represents a raw dialogue entry loaded from a JSON file.
+/// </summary>
+[System.Serializable]
+public class JsonDialogueEntry {
+    public SpeakerType speakerType;
+    public string speakerName;
+    public DialoguePosition position;
+    public string primaryText;
+    public string translationText;
+    public string assetName;
 }
 
 /// <summary>
@@ -116,6 +148,9 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     [Tooltip("UI Text component for rendering the dialogue running text.")]
     [SerializeField] private Text dialogueText;
 
+    [Tooltip("UI Text component for rendering the translation dialogue text. Optional.")]
+    [SerializeField] private Text translationText;
+
     [Header("Image Panels Configuration")]
     [Tooltip("Register the available image panels here. Define keys like 'Left', 'Right', 'BG' and link their UI Images.")]
     [SerializeField] private List<ImagePanelConfig> imagePanels = new List<ImagePanelConfig>();
@@ -144,6 +179,8 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     private bool isTypingText = false;
     private string fullTextOfCurrentLine = "";
     private int totalVisibleChars = 0;
+    private string fullTranslationTextOfCurrentLine = "";
+    private int totalVisibleTranslationChars = 0;
     private Coroutine typingCoroutine;
     private CanvasGroup containerCanvasGroup;
 
@@ -233,6 +270,7 @@ public class VisualNovelDialogueManager : MonoBehaviour {
         if (FontManager.Instance != null) {
             if (speakerNameText != null) FontManager.Instance.ApplyFontToText(speakerNameText);
             if (dialogueText != null) FontManager.Instance.ApplyFontToText(dialogueText);
+            if (translationText != null) FontManager.Instance.ApplyFontToText(translationText);
         }
     }
 
@@ -301,7 +339,12 @@ public class VisualNovelDialogueManager : MonoBehaviour {
             typingCoroutine = null;
         }
 
-        dialogueText.text = fullTextOfCurrentLine;
+        if (dialogueText != null) {
+            dialogueText.text = fullTextOfCurrentLine;
+        }
+        if (translationText != null && !string.IsNullOrEmpty(fullTranslationTextOfCurrentLine)) {
+            translationText.text = fullTranslationTextOfCurrentLine;
+        }
         isTypingText = false;
 
         OnLineComplete?.Invoke(currentLines[currentLineIndex]);
@@ -329,6 +372,23 @@ public class VisualNovelDialogueManager : MonoBehaviour {
         fullTextOfCurrentLine = line.dialogueText;
         totalVisibleChars = GetVisibleCharacterCount(fullTextOfCurrentLine);
 
+        // Set translation text values
+        if (translationText != null) {
+            if (!string.IsNullOrEmpty(line.translationText)) {
+                translationText.gameObject.SetActive(true);
+                fullTranslationTextOfCurrentLine = line.translationText;
+                totalVisibleTranslationChars = GetVisibleCharacterCount(fullTranslationTextOfCurrentLine);
+            } else {
+                translationText.text = "";
+                translationText.gameObject.SetActive(false);
+                fullTranslationTextOfCurrentLine = "";
+                totalVisibleTranslationChars = 0;
+            }
+        } else {
+            fullTranslationTextOfCurrentLine = "";
+            totalVisibleTranslationChars = 0;
+        }
+
         if (typingCoroutine != null) {
             StopCoroutine(typingCoroutine);
         }
@@ -344,14 +404,25 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     private IEnumerator TypeTextCoroutine(DialogueLine line) {
         isTypingText = true;
         dialogueText.text = "";
+        if (translationText != null) {
+            translationText.text = "";
+        }
 
         float speedMultiplier = Mathf.Max(0.01f, line.typingSpeedMultiplier);
         float delayBetweenChars = 1f / (baseCharactersPerSecond * speedMultiplier);
 
         int visibleCharsShown = 0;
-        while (visibleCharsShown <= totalVisibleChars) {
-            dialogueText.text = GetParsedText(fullTextOfCurrentLine, visibleCharsShown);
-            visibleCharsShown++;
+        int visibleTranslationCharsShown = 0;
+
+        while (visibleCharsShown <= totalVisibleChars || visibleTranslationCharsShown <= totalVisibleTranslationChars) {
+            if (dialogueText != null && visibleCharsShown <= totalVisibleChars) {
+                dialogueText.text = GetParsedText(fullTextOfCurrentLine, visibleCharsShown);
+                visibleCharsShown++;
+            }
+            if (translationText != null && !string.IsNullOrEmpty(fullTranslationTextOfCurrentLine) && visibleTranslationCharsShown <= totalVisibleTranslationChars) {
+                translationText.text = GetParsedText(fullTranslationTextOfCurrentLine, visibleTranslationCharsShown);
+                visibleTranslationCharsShown++;
+            }
             yield return new WaitForSeconds(delayBetweenChars);
         }
 
@@ -491,7 +562,11 @@ public class VisualNovelDialogueManager : MonoBehaviour {
         if (dialogueContainer != null) {
             containerCanvasGroup.DOComplete();
             containerCanvasGroup.DOFade(0f, containerFadeDuration).SetUpdate(true)
-                .OnComplete(() => dialogueContainer.SetActive(false));
+                .OnComplete(() => {
+                    dialogueContainer.SetActive(false);
+                    if (dialogueText != null) dialogueText.text = "";
+                    if (translationText != null) translationText.text = "";
+                });
         }
 
         // Fade all active image panels out
@@ -582,6 +657,217 @@ public class VisualNovelDialogueManager : MonoBehaviour {
         }
 
         return result.ToString();
+    }
+
+    #endregion
+
+    #region JSON Dialogue Loading & Parsing
+
+    /// <summary>
+    /// Loads and begins a dialogue sequence from a JSON text file stored in Resources.
+    /// </summary>
+    /// <param name="resourcePath">The path of the JSON file relative to Resources (without extension).</param>
+    public void StartDialogueFromJson(string resourcePath) {
+        TextAsset jsonAsset = Resources.Load<TextAsset>(resourcePath);
+        if (jsonAsset == null) {
+            Debug.LogError($"VisualNovelDialogueManager: Cannot find JSON dialogue file at Resources/{resourcePath}");
+            return;
+        }
+
+        StartDialogueFromJsonContent(jsonAsset.text);
+    }
+
+    /// <summary>
+    /// Begins a dialogue sequence from a raw JSON string content.
+    /// </summary>
+    public void StartDialogueFromJsonContent(string jsonContent) {
+        List<JsonDialogueEntry> entries = ParseDialogueJson(jsonContent);
+        if (entries == null || entries.Count == 0) {
+            Debug.LogWarning("VisualNovelDialogueManager: Parsed JSON dialogue is empty or invalid.");
+            return;
+        }
+
+        List<DialogueLine> dialogueLines = ConvertJsonEntriesToDialogueLines(entries);
+        StartDialogue(dialogueLines);
+    }
+
+    /// <summary>
+    /// Converts deserialized JSON dialogue entries into DialogueLine structures.
+    /// </summary>
+    private List<DialogueLine> ConvertJsonEntriesToDialogueLines(List<JsonDialogueEntry> entries) {
+        List<DialogueLine> lines = new List<DialogueLine>();
+        foreach (var entry in entries) {
+            DialogueLine line = new DialogueLine();
+            line.speakerName = entry.speakerName;
+            line.dialogueText = entry.primaryText;
+            line.translationText = entry.translationText;
+            line.typingSpeedMultiplier = 1f;
+            line.imageOperations = new List<DialogueImageOperation>();
+
+            // Handle panel operations for this entry
+            if (!string.IsNullOrEmpty(entry.assetName)) {
+                Sprite sprite = LoadSpriteFromResources(entry.assetName);
+                if (sprite != null) {
+                    DialogueImageOperation op = new DialogueImageOperation();
+                    op.panelKey = entry.position.ToString(); // "Left" or "Right"
+                    op.action = ImagePanelAction.ShowOrUpdate;
+                    op.spriteToDisplay = sprite;
+                    op.preserveAspect = true;
+                    op.fadeDuration = 0.3f;
+                    op.customScale = Vector3.one;
+                    line.imageOperations.Add(op);
+                }
+            }
+
+            lines.Add(line);
+        }
+        return lines;
+    }
+
+    /// <summary>
+    /// Helper to strip the extension from asset name and load from Resources.
+    /// </summary>
+    private Sprite LoadSpriteFromResources(string assetName) {
+        if (string.IsNullOrEmpty(assetName)) return null;
+        string path = assetName;
+        int dotIndex = path.LastIndexOf('.');
+        if (dotIndex > 0) {
+            path = path.Substring(0, dotIndex);
+        }
+        Sprite sprite = Resources.Load<Sprite>(path);
+        if (sprite == null) {
+            Debug.LogWarning($"VisualNovelDialogueManager: Failed to load Sprite '{path}' from Resources.");
+        }
+        return sprite;
+    }
+
+    /// <summary>
+    /// A robust custom JSON parser designed to handle arrays of objects with possible missing/trailing commas and comments.
+    /// </summary>
+    public static List<JsonDialogueEntry> ParseDialogueJson(string jsonText) {
+        List<JsonDialogueEntry> entries = new List<JsonDialogueEntry>();
+        if (string.IsNullOrEmpty(jsonText)) return entries;
+
+        // 1. Remove comments
+        string cleanText = System.Text.RegularExpressions.Regex.Replace(jsonText, @"//.*$", "", System.Text.RegularExpressions.RegexOptions.Multiline);
+        cleanText = System.Text.RegularExpressions.Regex.Replace(cleanText, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        // 2. Character-by-character parsing
+        int index = 0;
+        int length = cleanText.Length;
+
+        void SkipWhitespace() {
+            while (index < length && char.IsWhiteSpace(cleanText[index])) {
+                index++;
+            }
+        }
+
+        string ReadString() {
+            if (index >= length || cleanText[index] != '"') return null;
+            index++; // Skip opening quote
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            while (index < length) {
+                char c = cleanText[index];
+                if (c == '"') {
+                    index++; // Skip closing quote
+                    break;
+                } else if (c == '\\' && index + 1 < length) {
+                    index++;
+                    char next = cleanText[index];
+                    switch (next) {
+                        case '"': sb.Append('"'); break;
+                        case '\\': sb.Append('\\'); break;
+                        case '/': sb.Append('/'); break;
+                        case 'b': sb.Append('\b'); break;
+                        case 'f': sb.Append('\f'); break;
+                        case 'n': sb.Append('\n'); break;
+                        case 'r': sb.Append('\r'); break;
+                        case 't': sb.Append('\t'); break;
+                        default: sb.Append('\\').Append(next); break;
+                    }
+                } else {
+                    sb.Append(c);
+                }
+                index++;
+            }
+            return sb.ToString();
+        }
+
+        string ReadValue() {
+            SkipWhitespace();
+            if (index >= length) return null;
+            if (cleanText[index] == '"') {
+                return ReadString();
+            }
+            // Read unquoted word (e.g. null, true, false, or numbers)
+            int start = index;
+            while (index < length && !char.IsWhiteSpace(cleanText[index]) && cleanText[index] != ',' && cleanText[index] != '}' && cleanText[index] != ']') {
+                index++;
+            }
+            string word = cleanText.Substring(start, index - start);
+            if (word.ToLower() == "null") return null;
+            return word;
+        }
+
+        while (index < length) {
+            SkipWhitespace();
+            if (index >= length) break;
+            
+            char c = cleanText[index];
+            if (c == '{') {
+                index++; // Skip '{'
+                JsonDialogueEntry entry = new JsonDialogueEntry();
+                while (index < length) {
+                    SkipWhitespace();
+                    if (index >= length) break;
+                    if (cleanText[index] == '}') {
+                        index++; // Skip '}'
+                        break;
+                    }
+                    if (cleanText[index] == ',') {
+                        index++; // Skip comma
+                        continue;
+                    }
+                    
+                    if (cleanText[index] == '"') {
+                        string key = ReadString();
+                        SkipWhitespace();
+                        if (index < length && cleanText[index] == ':') {
+                            index++; // Skip ':'
+                        }
+                        string val = ReadValue();
+                        
+                        switch (key) {
+                            case "speakerType":
+                                if (System.Enum.TryParse(val, true, out SpeakerType st)) entry.speakerType = st;
+                                break;
+                            case "speakerName":
+                                entry.speakerName = val;
+                                break;
+                            case "position":
+                                if (System.Enum.TryParse(val, true, out DialoguePosition pos)) entry.position = pos;
+                                break;
+                            case "primaryText":
+                                entry.primaryText = val;
+                                break;
+                            case "translationText":
+                                entry.translationText = val;
+                                break;
+                            case "assetName":
+                                entry.assetName = val;
+                                break;
+                        }
+                    } else {
+                        index++; // Skip invalid character to avoid infinite loop
+                    }
+                }
+                entries.Add(entry);
+            } else {
+                index++; // Skip non-object character
+            }
+        }
+
+        return entries;
     }
 
     #endregion

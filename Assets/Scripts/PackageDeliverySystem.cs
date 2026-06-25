@@ -309,10 +309,10 @@ public class PackageDeliverySystem : MonoBehaviour {
         // Wait for the generation panel fade animation to finish
         yield return new WaitForSecondsRealtime(0.4f);
 
-        string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        AsyncOperation asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(sceneName);
+        string sceneName = SceneLoader.Instance.GetActiveSceneName();
+        AsyncOperation asyncLoad = SceneLoader.Instance.LoadSceneAsync(sceneName);
 
-        while (!asyncLoad.isDone) {
+        while (asyncLoad != null && !asyncLoad.isDone) {
             yield return null;
         }
     }

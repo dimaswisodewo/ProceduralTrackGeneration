@@ -1,0 +1,114 @@
+[
+  {
+    "speakerType": "Environment",
+    "speakerName": null,
+    "position": "Right",
+    "primaryText": "[Scene: A dimly lit office. Papers are scattered everywhere. Sirens faint in the distance. I look panicked. Enter Bro, my coworker who sneaked in to help.]",
+    "translationText": "(Adegan: Kantor yang remang-remang. Kertas berserakan di mana-mana. Suara sirine terdengar samar di kejauhan. Aku terlihat panik. Masuk Bro, rekan kerjaku yang menyelinap untuk membantu.)",
+    "assetName": null
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Bro",
+    "position": "Left",
+    "primaryText": "\"Hey! Pull yourself together. We don't have much time.\"",
+    "translationText": "“Hei! Tenang, kuasai dirimu. Kita tidak punya banyak waktu.”",
+    "assetName": "bro_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Me",
+    "position": "Right",
+    "primaryText": "\"Bro? What is happening? The police... my boss... they're saying I stole millions from the company! I didn't do anything!\"",
+    "translationText": "“Bro? Apa yang terjadi? Polisi... bosku... mereka bilang aku korupsi jutaan dolar dari perusahaan! Aku tidak melakukan kesalahan apa pun!”",
+    "assetName": "me_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Bro",
+    "position": "Left",
+    "primaryText": "\"I know you didn't. Your boss framed you because you refused to help him forge those financial reports. You’re the perfect scapegoat. If you get arrested, you're going to prison for life. Your life is over.\"",
+    "translationText": "“Aku tahu kamu tidak bersalah. Bosmu menjebakmu karena kamu menolak membantu dia memalsukan laporan keuangan itu. Kamu dijadikan kambing hitam yang sempurna. Kalau kamu tertangkap, kamu bakal dipenjara seumur hidup. Hidupmu hancur.”",
+    "assetName": "bro_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Me",
+    "position": "Right",
+    "primaryText": "\"But I’m innocent! How do I prove it to the judge?\"",
+    "translationText": "“Tapi aku tidak bersalah! Bagaimana cara membuktikannya ke hakim?”",
+    "assetName": "me_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Bro",
+    "position": "Left",
+    "primaryText": "\"With these.\"",
+    "translationText": "“Dengan ini.”",
+    "assetName": "bro_picture.png"
+  },
+  {
+    "speakerType": "Environment",
+    "speakerName": null,
+    "position": "Right",
+    "primaryText": "[Bro slams a heavy briefcase onto the desk and opens it. Inside are 10 unique documents.]",
+    "translationText": "(Bro membanting sebuah koper berat ke atas meja dan membukanya. Di dalamnya ada 10 dokumen unik.)",
+    "assetName": null
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Bro",
+    "position": "Left",
+    "primaryText": "\"These are the 10 Evidence Documents. They prove the boss did it, not you. But right now, they’re just pieces of paper. The court won't accept them unless they are officially validated.\"",
+    "translationText": "“Ini adalah 10 Dokumen Bukti. Kertas-kertas ini membuktikan kalau bosmu yang melakukannya, bukan kamu. Tapi saat ini, ini cuma sekadar kertas biasa. Pengadilan tidak akan menerimanya kecuali dokumen ini disahkan secara resmi.”",
+    "assetName": "bro_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Me",
+    "position": "Right",
+    "primaryText": "\"Validated? How?\"",
+    "translationText": "“Disahkan? Bagaimana caranya?”",
+    "assetName": "me_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Bro",
+    "position": "Left",
+    "primaryText": "\"You need to take these to 10 different directors in 10 different offices across the city. Each director has a special official stamp. If you get all 10 stamps, the evidence becomes legally bulletproof. Once you have them all, bring them to the Supreme Court for your trial.\"",
+    "translationText": "“Kamu harus membawa ini ke 10 direktur berbeda di 10 kantor berbeda di seluruh kota. Setiap direktur punya <b>CAP</b> stempel resmi khusus. Kalau kamu berhasil dapat 10 stempel itu, bukti ini bakal sah secara hukum dan tidak bisa diganggu gugat. Setelah dapat semuanya, bawa dokumen itu ke Mahkamah Agung untuk persidanganmu.”",
+    "assetName": "bro_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Me",
+    "position": "Right",
+    "primaryText": "\"Ten offices? That sounds impossible. What if I lose them? What if they get ruined?\"",
+    "translationText": "“Sepuluh kantor? Kedengarannya mustahil. Bagaimana kalau dokumennya hilang? Bagaimana kalau rusak?”",
+    "assetName": "me_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Bro",
+    "position": "Left",
+    "primaryText": "\"Do not ruin them. If even one document gets wet, torn, or destroyed, you lose your proof. Your boss's lawyers will tear you apart, and you'll rot in a cell. Protect that briefcase with your life.\"",
+    "translationText": "“Jangan sampai rusak. Kalau ada satu saja dokumen yang basah, robek, atau hancur, kamu bakal kehilangan bukti. Pengacara bosmu akan menghabisimu di sidang, dan kamu bakal membusuk di penjara. Jaga koper itu dengan nyawamu.”",
+    "assetName": "bro_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Me",
+    "position": "Right",
+    "primaryText": "[Grips the briefcase] \"10 offices. 10 stamps. Save my life. Got it.\"",
+    "translationText": "(Mencengkeram koper) “10 kantor. 10 <b>CAP</b> stempel. Selamatkan hidupku. Aku mengerti.”",
+    "assetName": "me_picture.png"
+  },
+  {
+    "speakerType": "Person",
+    "speakerName": "Bro",
+    "position": "Left",
+    "primaryText": "\"Go out the back door. Hurry, the clock is ticking!\"",
+    "translationText": "“Lewat pintu belakang. Cepat, waktu kita mepet!”",
+    "assetName": "bro_picture.png"
+  }
+]

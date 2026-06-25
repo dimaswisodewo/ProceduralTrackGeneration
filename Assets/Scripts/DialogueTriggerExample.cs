@@ -1,23 +1,26 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 /// <summary>
 /// A simple example component demonstrating how to trigger dialogue conversations.
 /// </summary>
 public class DialogueTriggerExample : MonoBehaviour {
-    [Header("Conversation Settings")]
+    [Header("Dialogue Source")]
+    [Tooltip("Path of the JSON dialogue file in Resources (without extension). E.g. 'dialogue_example'")]
+    public string jsonResourcePath;
+
     [Tooltip("Reference to a pre-defined conversation ScriptableObject.")]
-    [SerializeField] private DialogueConversation conversationAsset;
+    public DialogueConversation conversationAsset;
 
-    [Tooltip("Inline dialogue list. If conversationAsset is null, the manager will play these lines.")]
-    [SerializeField] private List<DialogueLine> inlineDialogue = new List<DialogueLine>();
-
+    [Header("Trigger Settings")]
     [Tooltip("If true, dialogue starts as soon as this component's Start method runs.")]
-    [SerializeField] private bool triggerOnStart = false;
+    public bool triggerOnStart = false;
 
     [Tooltip("Trigger key to start the dialogue at runtime.")]
-    [SerializeField] private KeyCode triggerKey = KeyCode.T;
+    public KeyCode triggerKey = KeyCode.T;
 
     private void Start() {
         if (triggerOnStart) {
@@ -26,13 +29,33 @@ public class DialogueTriggerExample : MonoBehaviour {
     }
 
     private void Update() {
-        if (Input.GetKeyDown(triggerKey)) {
+        if (GetTriggerKeyPressed()) {
             TriggerDialogue();
         }
     }
 
+    private bool GetTriggerKeyPressed() {
+#if ENABLE_INPUT_SYSTEM
+        var keyboard = Keyboard.current;
+        if (keyboard == null) return false;
+
+        string keyName = triggerKey.ToString();
+        // Convert legacy KeyCode names to InputSystem Key enum names
+        if (keyName.StartsWith("Alpha")) {
+            keyName = "Digit" + keyName.Substring(5);
+        }
+
+        if (System.Enum.TryParse<Key>(keyName, true, out var key)) {
+            return keyboard[key].wasPressedThisFrame;
+        }
+        return false;
+#else
+        return Input.GetKeyDown(triggerKey);
+#endif
+    }
+
     /// <summary>
-    /// Starts the dialogue sequence.
+    /// Starts the dialogue sequence from the configured source.
     /// </summary>
     public void TriggerDialogue() {
         if (VisualNovelDialogueManager.Instance == null) {
@@ -40,14 +63,14 @@ public class DialogueTriggerExample : MonoBehaviour {
             return;
         }
 
-        if (conversationAsset != null) {
+        if (!string.IsNullOrEmpty(jsonResourcePath)) {
+            Debug.Log($"DialogueTriggerExample: Starting dialogue from JSON path: Resources/{jsonResourcePath}");
+            VisualNovelDialogueManager.Instance.StartDialogueFromJson(jsonResourcePath);
+        } else if (conversationAsset != null) {
             Debug.Log($"DialogueTriggerExample: Starting dialogue conversation asset: {conversationAsset.name}");
             VisualNovelDialogueManager.Instance.StartDialogue(conversationAsset);
-        } else if (inlineDialogue != null && inlineDialogue.Count > 0) {
-            Debug.Log("DialogueTriggerExample: Starting inline dialogue lines.");
-            VisualNovelDialogueManager.Instance.StartDialogue(inlineDialogue);
         } else {
-            Debug.LogWarning("DialogueTriggerExample: No dialogue conversation asset or inline dialogue lines configured to play.");
+            Debug.LogWarning("DialogueTriggerExample: No JSON resource path or Dialogue conversation asset configured.");
         }
     }
 }
