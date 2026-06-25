@@ -34,20 +34,7 @@ public class DeliverySpot : MonoBehaviour {
 
         Renderer renderer = ringVisual.GetComponent<Renderer>();
         if (renderer != null) {
-            ringMaterial = Resources.Load<Material>("Materials/SpotMaterial");
-            if (ringMaterial != null) {
-                ringMaterial = Instantiate(ringMaterial);
-            } else {
-                // Find a shader. Sprites/Default is unlit and works perfectly across all pipelines (Built-in, URP).
-                Shader shader = Shader.Find("Sprites/Default");
-                if (shader == null) {
-                    shader = Shader.Find("Universal Render Pipeline/Lit");
-                }
-                if (shader == null) {
-                    shader = Shader.Find("Standard");
-                }
-                ringMaterial = new Material(shader);
-            }
+            ringMaterial = VisualEffectUtility.GetSpotMaterial();
             renderer.sharedMaterial = ringMaterial;
         }
 
@@ -80,10 +67,7 @@ public class DeliverySpot : MonoBehaviour {
             targetColor = new Color(0.6f, 0.6f, 0.6f, 0.08f);
         }
 
-        ringMaterial.color = targetColor;
-        if (ringMaterial.HasProperty("_BaseColor")) {
-            ringMaterial.SetColor("_BaseColor", targetColor);
-        }
+        VisualEffectUtility.ApplyMaterialColor(ringMaterial, targetColor);
 
         if (ringVisual != null) {
             if (isPickupTarget || isDeliveryTarget) {
