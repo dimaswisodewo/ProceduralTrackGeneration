@@ -29,6 +29,16 @@ public class NPCCarController : MonoBehaviour {
     public bool isPaused = false;
     public float laneOffset = 0.7f;
 
+    [Header("Crash Effects Settings")]
+    public bool enableSquashAndStretch = true;
+    public float squashDuration = 0.3f;
+    public float minBounceSpeed = 3f;
+    public float bounceCooldown = 0.3f;
+    public Transform carBodyVisual;
+
+    private float lastBounceTime = 0f;
+    private Vector3 originalBodyScale;
+
     private Rigidbody rb;
     private List<MapGenerator.GridPos> currentPath = new List<MapGenerator.GridPos>();
     private int currentPathIndex = 0;
@@ -129,6 +139,33 @@ public class NPCCarController : MonoBehaviour {
 
     private void Start() {
         lastPosition = transform.position;
+
+        // Auto-detect car body visual child object if not assigned
+        if (carBodyVisual == null) {
+            carBodyVisual = transform.Find("Parent");
+            if (carBodyVisual == null) {
+                carBodyVisual = transform.Find("CarMesh");
+            }
+            if (carBodyVisual == null) {
+                // Find first MeshRenderer under children that is not a wheel
+                MeshRenderer[] renderers = GetComponentsInChildren<MeshRenderer>();
+                foreach (var r in renderers) {
+                    if (r.gameObject != gameObject && !r.name.Contains("Mesh")) {
+                        carBodyVisual = r.transform;
+                        break;
+                    }
+                }
+                if (carBodyVisual == null && renderers.Length > 0) {
+                    carBodyVisual = renderers[0].transform;
+                }
+            }
+        }
+
+        if (carBodyVisual != null) {
+            originalBodyScale = carBodyVisual.localScale;
+        } else {
+            originalBodyScale = Vector3.one;
+        }
     }
 
     public void InitializePath(List<MapGenerator.GridPos> path, float sideOffset) {
@@ -366,13 +403,27 @@ public class NPCCarController : MonoBehaviour {
     }
 
     private void OnCollisionEnter(Collision collision) {
-        if (isSpunOut || isRecovering) return;
+        if (collision.contacts.Length == 0) return;
 
-        // 1. Hit by Player
-        if (collision.gameObject.CompareTag("Player")) {
+        // Check tags first as a fast path
+        bool isPlayer = collision.gameObject.CompareTag("Player");
+        bool isNPC = collision.gameObject.CompareTag("NPC") || (collision.transform.parent != null && collision.transform.parent.CompareTag("NPC"));
+        bool isBuilding = collision.gameObject.CompareTag("Building") || (collision.transform.parent != null && collision.transform.parent.CompareTag("Building"));
+        bool isSpot = collision.gameObject.CompareTag("Spot") || (collision.transform.parent != null && collision.transform.parent.CompareTag("Spot"));
+
+        if (!isPlayer && !isNPC && !isBuilding && !isSpot) {
+            // Ignore road/ground pieces
+            if (collision.gameObject.GetComponentInParent<RoadPiece>() != null) return;
+        }
+
+        Vector3 contactNormal = collision.contacts[0].normal;
+        // Filter out floor/ceiling hits (we only bounce off walls/buildings)
+        if (Mathf.Abs(contactNormal.y) > 0.6f) return;
+
+        // Calculate collision impact speed
+        float impactSpeed = 0f;
+        if (isPlayer) {
             Rigidbody playerRb = collision.rigidbody;
-            
-            // Get player's pre-collision velocity
             Vector3 playerPrevVel = Vector3.zero;
             CarController playerController = collision.gameObject.GetComponentInParent<CarController>();
             if (playerController != null) {
@@ -380,51 +431,114 @@ public class NPCCarController : MonoBehaviour {
             } else if (playerRb != null) {
                 playerPrevVel = playerRb.linearVelocity;
             }
+            Vector3 npcVel = GetVelocity();
+            impactSpeed = (playerPrevVel - npcVel).magnitude;
+        } else if (isNPC) {
+            NPCCarController otherNPC = collision.gameObject.GetComponentInParent<NPCCarController>();
+            if (otherNPC != null) {
+                Vector3 thisVel = GetVelocity();
+                Vector3 otherVel = otherNPC.GetVelocity();
+                impactSpeed = (otherVel - thisVel).magnitude;
+            }
+        } else {
+            // Hitting static obstacles (Buildings, Spots)
+            impactSpeed = collision.relativeVelocity.magnitude;
+        }
 
+        // Lower threshold for player/NPC collisions since same-direction driving reduces relative velocity
+        float activeThreshold = (isPlayer || isNPC) ? 1.2f : minBounceSpeed;
+        if (impactSpeed < activeThreshold) return;
+
+        // Check bounce cooldown
+        if (Time.time < lastBounceTime + bounceCooldown) return;
+        lastBounceTime = Time.time;
+
+        // Trigger performant visual Squash & Stretch
+        if (enableSquashAndStretch && carBodyVisual != null) {
+            TriggerSquashAndStretch(contactNormal, impactSpeed);
+        }
+
+        // Spawn collision sparks using the performant shared TrafficManager particle system
+        if (TrafficManager.Instance != null) {
+            TrafficManager.Instance.SpawnCollisionSparks(collision.contacts[0].point, contactNormal, impactSpeed);
+        }
+
+        // If already spun out or recovering, we don't apply gameplay state changes (like initiating spinout)
+        if (isSpunOut || isRecovering) return;
+
+        // Gameplay reactions (Spin out or Shock pause)
+        if (isPlayer) {
+            Rigidbody playerRb = collision.rigidbody;
+            Vector3 playerPrevVel = Vector3.zero;
+            CarController playerController = collision.gameObject.GetComponentInParent<CarController>();
+            if (playerController != null) {
+                playerPrevVel = playerController.PreviousLinearVelocity;
+            } else if (playerRb != null) {
+                playerPrevVel = playerRb.linearVelocity;
+            }
             Vector3 npcVel = GetVelocity();
             Vector3 relativeVelocityOfPlayer = playerPrevVel - npcVel;
-            float impactForce = relativeVelocityOfPlayer.magnitude;
             
-            // If collision is forceful enough, spin out physically!
-            if (impactForce > 4f) {
-                // Spin out NPC (uses VelocityChange so it ignores mass)
+            if (relativeVelocityOfPlayer.magnitude > 4f) {
+                // Spin out NPC
                 SpinOut(relativeVelocityOfPlayer, collision.contacts[0].point);
-                
-                // Add recoil force to player (opposite direction of impact)
-                if (playerRb != null) {
-                    Vector3 recoilDir = -relativeVelocityOfPlayer.normalized;
-                    recoilDir.y = 0.15f; // Add a juicy little upward hop to player
-                    recoilDir.Normalize();
-                    
-                    float playerRecoilSpeed = impactForce * 0.6f; // Recoil multiplier
-                    playerRb.AddForce(recoilDir * playerRecoilSpeed, ForceMode.VelocityChange);
-                    
-                    // Add a tiny random spin torque to the player's car
-                    playerRb.AddTorque(Vector3.up * Random.Range(-4f, 4f), ForceMode.VelocityChange);
-                }
             } else {
-                // Minor bump from player -> Shock-pause for 3 seconds
                 TriggerShockPause(3.0f);
             }
-        }
-        // 2. Hit by another NPC
-        else if (collision.gameObject.CompareTag("NPC") || (collision.transform.parent != null && collision.transform.parent.CompareTag("NPC"))) {
+        } else if (isNPC) {
             NPCCarController otherNPC = collision.gameObject.GetComponentInParent<NPCCarController>();
             if (otherNPC != null) {
                 Vector3 thisVel = GetVelocity();
                 Vector3 otherVel = otherNPC.GetVelocity();
                 Vector3 relativeVelocityOfOther = otherVel - thisVel;
-                float impactForce = relativeVelocityOfOther.magnitude;
                 
-                if (otherNPC.isSpunOut && impactForce > 3f) {
-                    // Spin out this NPC in the direction of the hit (reduced force for NPC-to-NPC impact)
+                if (otherNPC.isSpunOut && relativeVelocityOfOther.magnitude > 3f) {
                     SpinOut(relativeVelocityOfOther * 0.3f, collision.contacts[0].point);
                 } else {
-                    // Minor bump from another NPC -> Shock-pause for 2 seconds
                     TriggerShockPause(2.0f);
                 }
             }
         }
+    }
+
+    private void TriggerSquashAndStretch(Vector3 contactNormal, float impactSpeed) {
+        if (!enableSquashAndStretch || carBodyVisual == null) return;
+
+        // Kill active scale tweens on the visual
+        carBodyVisual.DOKill();
+        carBodyVisual.localScale = originalBodyScale;
+
+        float maxSquashFactor = Mathf.Clamp(impactSpeed * 0.015f, 0.05f, 0.22f);
+        float duration = squashDuration;
+
+        float dotForward = Mathf.Abs(Vector3.Dot(contactNormal, transform.forward));
+        Vector3 squashScale = originalBodyScale;
+        Vector3 stretchScale = originalBodyScale;
+
+        if (dotForward > 0.5f) {
+            squashScale.z *= (1f - maxSquashFactor);
+            squashScale.y *= (1f + maxSquashFactor * 0.5f);
+            squashScale.x *= (1f + maxSquashFactor * 0.5f);
+
+            stretchScale.z *= (1f + maxSquashFactor * 0.4f);
+            stretchScale.y *= (1f - maxSquashFactor * 0.2f);
+            stretchScale.x *= (1f - maxSquashFactor * 0.2f);
+        } else {
+            squashScale.x *= (1f - maxSquashFactor);
+            squashScale.y *= (1f + maxSquashFactor * 0.5f);
+            squashScale.z *= (1f + maxSquashFactor * 0.5f);
+
+            stretchScale.x *= (1f + maxSquashFactor * 0.4f);
+            stretchScale.y *= (1f - maxSquashFactor * 0.2f);
+            stretchScale.z *= (1f - maxSquashFactor * 0.2f);
+        }
+
+        // DOTween Sequence
+        Sequence seq = DOTween.Sequence();
+        seq.Append(carBodyVisual.DOScale(squashScale, duration * 0.25f).SetEase(Ease.OutQuad));
+        seq.Append(carBodyVisual.DOScale(stretchScale, duration * 0.35f).SetEase(Ease.InOutQuad));
+        seq.Append(carBodyVisual.DOScale(originalBodyScale, duration * 0.4f).SetEase(Ease.InQuad));
+        seq.SetTarget(carBodyVisual);
     }
 
     private void OnTriggerEnter(Collider other) {

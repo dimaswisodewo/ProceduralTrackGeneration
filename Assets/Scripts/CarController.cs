@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using DG.Tweening;
 
 [RequireComponent(typeof(Rigidbody))]
 public class CarController : MonoBehaviour {
@@ -118,7 +119,6 @@ public class CarController : MonoBehaviour {
     private float lastBounceTime = 0f;
     private float stunTimer = 0f;
     private Vector3 originalBodyScale;
-    private Coroutine squashCoroutine;
 
     private void Start() {
         gameObject.tag = "Player";
@@ -736,43 +736,39 @@ public class CarController : MonoBehaviour {
             impactSpeed = collision.relativeVelocity.magnitude;
         }
 
-        if (impactSpeed < minBounceSpeed) return;
+        // Lower threshold for NPC collisions since same-direction driving reduces relative velocity
+        float activeThreshold = hitNPC ? 1.2f : minBounceSpeed;
+        if (impactSpeed < activeThreshold) return;
 
         // Check bounce cooldown
         if (Time.time < lastBounceTime + bounceCooldown) return;
         lastBounceTime = Time.time;
 
-        if (!hitNPC) {
-            // Rebound direction (flattened along Y axis to keep it horizontal)
-            Vector3 bounceNormal = contactNormal;
-            bounceNormal.y = 0f;
-            bounceNormal.Normalize();
+        // Rebound direction (flattened along Y axis to keep it horizontal)
+        Vector3 bounceNormal = contactNormal;
+        bounceNormal.y = 0f;
+        bounceNormal.Normalize();
 
-            // Apply rebound velocity impulse
-            Vector3 reboundVel = bounceNormal * impactSpeed * bounceForceFactor;
-            
-            // Add vertical hop (upwards impulse) to make the bounce feel juicy
-            reboundVel += Vector3.up * impactSpeed * verticalBounceForce;
+        // Apply rebound velocity impulse
+        Vector3 reboundVel = bounceNormal * impactSpeed * bounceForceFactor;
+        
+        // Add vertical hop (upwards impulse) to make the bounce feel juicy
+        reboundVel += Vector3.up * impactSpeed * verticalBounceForce;
 
-            // Cancel out velocity moving directly into the obstacle
-            Vector3 currentVel = rb.linearVelocity;
-            float normalVel = Vector3.Dot(currentVel, bounceNormal);
-            if (normalVel < 0f) {
-                currentVel -= bounceNormal * normalVel;
-            }
-            rb.linearVelocity = currentVel + reboundVel;
+        // Cancel out velocity moving directly into the obstacle
+        Vector3 currentVel = rb.linearVelocity;
+        float normalVel = Vector3.Dot(currentVel, bounceNormal);
+        if (normalVel < 0f) {
+            currentVel -= bounceNormal * normalVel;
         }
+        rb.linearVelocity = currentVel + reboundVel;
 
         // Apply stun
         stunTimer = bounceStunDuration;
 
         // Trigger visual Squash & Stretch
         if (enableSquashAndStretch && carBodyVisual != null) {
-            if (squashCoroutine != null) {
-                StopCoroutine(squashCoroutine);
-                carBodyVisual.localScale = originalBodyScale;
-            }
-            squashCoroutine = StartCoroutine(SquashAndStretchRoutine(contactNormal, impactSpeed));
+            TriggerSquashAndStretch(contactNormal, impactSpeed);
         }
 
         // Spawn procedural Sparks
@@ -788,12 +784,15 @@ public class CarController : MonoBehaviour {
         }
     }
 
-    private System.Collections.IEnumerator SquashAndStretchRoutine(Vector3 contactNormal, float impactSpeed) {
-        if (carBodyVisual == null) yield break;
+    private void TriggerSquashAndStretch(Vector3 contactNormal, float impactSpeed) {
+        if (!enableSquashAndStretch || carBodyVisual == null) return;
+
+        // Kill active scale tweens on the visual
+        carBodyVisual.DOKill();
+        carBodyVisual.localScale = originalBodyScale;
 
         float maxSquashFactor = Mathf.Clamp(impactSpeed * 0.015f, 0.05f, 0.22f);
         float duration = squashDuration;
-        float elapsed = 0f;
 
         float dotForward = Mathf.Abs(Vector3.Dot(contactNormal, transform.forward));
         Vector3 squashScale = originalBodyScale;
@@ -803,55 +802,26 @@ public class CarController : MonoBehaviour {
             squashScale.z *= (1f - maxSquashFactor);
             squashScale.y *= (1f + maxSquashFactor * 0.5f);
             squashScale.x *= (1f + maxSquashFactor * 0.5f);
-        } else {
-            squashScale.x *= (1f - maxSquashFactor);
-            squashScale.y *= (1f + maxSquashFactor * 0.5f);
-            squashScale.z *= (1f + maxSquashFactor * 0.5f);
-        }
 
-        float squashTime = duration * 0.25f;
-        while (elapsed < squashTime) {
-            if (carBodyVisual == null) yield break;
-            elapsed += Time.deltaTime;
-            float t = elapsed / squashTime;
-            carBodyVisual.localScale = Vector3.Lerp(originalBodyScale, squashScale, t);
-            yield return null;
-        }
-
-        elapsed = 0f;
-        float stretchTime = duration * 0.35f;
-        if (dotForward > 0.5f) {
             stretchScale.z *= (1f + maxSquashFactor * 0.4f);
             stretchScale.y *= (1f - maxSquashFactor * 0.2f);
             stretchScale.x *= (1f - maxSquashFactor * 0.2f);
         } else {
+            squashScale.x *= (1f - maxSquashFactor);
+            squashScale.y *= (1f + maxSquashFactor * 0.5f);
+            squashScale.z *= (1f + maxSquashFactor * 0.5f);
+
             stretchScale.x *= (1f + maxSquashFactor * 0.4f);
             stretchScale.y *= (1f - maxSquashFactor * 0.2f);
             stretchScale.z *= (1f - maxSquashFactor * 0.2f);
         }
 
-        while (elapsed < stretchTime) {
-            if (carBodyVisual == null) yield break;
-            elapsed += Time.deltaTime;
-            float t = elapsed / stretchTime;
-            carBodyVisual.localScale = Vector3.Lerp(squashScale, stretchScale, t);
-            yield return null;
-        }
-
-        elapsed = 0f;
-        float settleTime = duration * 0.4f;
-        while (elapsed < settleTime) {
-            if (carBodyVisual == null) yield break;
-            elapsed += Time.deltaTime;
-            float t = elapsed / settleTime;
-            carBodyVisual.localScale = Vector3.Lerp(stretchScale, originalBodyScale, t);
-            yield return null;
-        }
-
-        if (carBodyVisual != null) {
-            carBodyVisual.localScale = originalBodyScale;
-        }
-        squashCoroutine = null;
+        // DOTween Sequence
+        Sequence seq = DOTween.Sequence();
+        seq.Append(carBodyVisual.DOScale(squashScale, duration * 0.25f).SetEase(Ease.OutQuad));
+        seq.Append(carBodyVisual.DOScale(stretchScale, duration * 0.35f).SetEase(Ease.InOutQuad));
+        seq.Append(carBodyVisual.DOScale(originalBodyScale, duration * 0.4f).SetEase(Ease.InQuad));
+        seq.SetTarget(carBodyVisual);
     }
 
     private void InitializeSparkParticleSystem() {
@@ -976,44 +946,25 @@ public class CarController : MonoBehaviour {
 
         // Squash & Stretch speed effect
         if (enableSquashAndStretch && carBodyVisual != null) {
-            if (squashCoroutine != null) {
-                StopCoroutine(squashCoroutine);
-                carBodyVisual.localScale = originalBodyScale;
-            }
-            squashCoroutine = StartCoroutine(BoostStretchRoutine(duration));
+            TriggerBoostStretch(duration);
         }
     }
 
-    private System.Collections.IEnumerator BoostStretchRoutine(float duration) {
-        if (carBodyVisual == null) yield break;
+    private void TriggerBoostStretch(float duration) {
+        if (carBodyVisual == null) return;
 
-        float elapsed = 0f;
+        carBodyVisual.DOKill();
+        carBodyVisual.localScale = originalBodyScale;
+
         Vector3 stretchScale = originalBodyScale;
         stretchScale.z *= 1.25f; // Stretch forward
         stretchScale.x *= 0.85f; // Narrow sides
         stretchScale.y *= 0.85f; // Flat top
 
-        float stretchTime = duration * 0.2f;
-        while (elapsed < stretchTime) {
-            if (carBodyVisual == null) yield break;
-            elapsed += Time.deltaTime;
-            carBodyVisual.localScale = Vector3.Lerp(originalBodyScale, stretchScale, elapsed / stretchTime);
-            yield return null;
-        }
-
-        elapsed = 0f;
-        float returnTime = duration * 0.8f;
-        while (elapsed < returnTime) {
-            if (carBodyVisual == null) yield break;
-            elapsed += Time.deltaTime;
-            carBodyVisual.localScale = Vector3.Lerp(stretchScale, originalBodyScale, elapsed / returnTime);
-            yield return null;
-        }
-
-        if (carBodyVisual != null) {
-            carBodyVisual.localScale = originalBodyScale;
-        }
-        squashCoroutine = null;
+        Sequence seq = DOTween.Sequence();
+        seq.Append(carBodyVisual.DOScale(stretchScale, duration * 0.2f).SetEase(Ease.OutQuad));
+        seq.Append(carBodyVisual.DOScale(originalBodyScale, duration * 0.8f).SetEase(Ease.InOutQuad));
+        seq.SetTarget(carBodyVisual);
     }
 
     private Shader FindSparkShader() {

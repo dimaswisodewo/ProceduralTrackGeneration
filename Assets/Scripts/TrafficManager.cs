@@ -34,9 +34,12 @@ public class TrafficManager : MonoBehaviour {
     private Transform playerTransform;
     private bool initialized = false;
 
+    private ParticleSystem sparkParticleSystem;
+
     private void Awake() {
         if (Instance == null) {
             Instance = this;
+            InitializeSparkParticleSystem();
         } else {
             Destroy(gameObject);
         }
@@ -350,6 +353,96 @@ public class TrafficManager : MonoBehaviour {
                 if (bodyMatInstance != null) {
                     r.sharedMaterial = bodyMatInstance;
                 }
+            }
+        }
+    }
+
+    private void InitializeSparkParticleSystem() {
+        GameObject psObj = new GameObject("TrafficSparksPS");
+        psObj.transform.parent = transform;
+        psObj.transform.localPosition = Vector3.zero;
+        psObj.transform.localRotation = Quaternion.identity;
+
+        sparkParticleSystem = psObj.AddComponent<ParticleSystem>();
+
+        // Stop auto-playing system to allow parameter configuration
+        sparkParticleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+        // Configure main module
+        var main = sparkParticleSystem.main;
+        main.duration = 1f;
+        main.loop = false;
+        main.startLifetime = 0.5f;
+        main.startSpeed = 5f;
+        main.startSize = 0.12f;
+        main.gravityModifier = 1f;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.playOnAwake = false;
+
+        // Configure emission module
+        var emission = sparkParticleSystem.emission;
+        emission.rateOverTime = 0f;
+
+        // Configure shape module
+        var shape = sparkParticleSystem.shape;
+        shape.enabled = false;
+
+        // Renderer setup
+        var psr = psObj.GetComponent<ParticleSystemRenderer>();
+        psr.renderMode = ParticleSystemRenderMode.Billboard;
+
+        // Find standard spark shader and create a default material
+        Shader shader = FindSparkShader();
+        Material psMat = new Material(shader);
+        psMat.color = Color.white;
+        if (psMat.HasProperty("_BaseColor")) {
+            psMat.SetColor("_BaseColor", Color.white);
+        }
+        psr.sharedMaterial = psMat;
+    }
+
+    private Shader FindSparkShader() {
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null) shader = Shader.Find("Mobile/Diffuse");
+        if (shader == null) shader = Shader.Find("Standard");
+        return shader;
+    }
+
+    public void SpawnCollisionSparks(Vector3 contactPoint, Vector3 contactNormal, float impactSpeed) {
+        if (sparkParticleSystem == null) return;
+
+        Color[] pastelColors = new Color[] {
+            new Color(1f, 0.65f, 0.65f), // Pastel Red/Pink
+            new Color(0.65f, 0.85f, 1f), // Pastel Blue
+            new Color(0.65f, 1f, 0.65f), // Pastel Green
+            new Color(1f, 0.95f, 0.6f),  // Pastel Yellow
+            new Color(0.9f, 0.65f, 1f),  // Pastel Purple
+            new Color(1f, 0.75f, 0.5f)   // Pastel Orange
+        };
+
+        int count = Mathf.Clamp(Mathf.RoundToInt(impactSpeed * 1.2f), 6, 18);
+        ParticleSystem.EmitParams emitParams = new ParticleSystem.EmitParams();
+
+        for (int i = 0; i < count; i++) {
+            Vector3 randomDir = (contactNormal + Random.insideUnitSphere * 0.5f).normalized;
+            float speed = Random.Range(1.5f, impactSpeed * 0.5f);
+            Vector3 velocity = randomDir * speed;
+
+            emitParams.position = contactPoint + contactNormal * 0.05f;
+            emitParams.velocity = velocity;
+            emitParams.startColor = pastelColors[Random.Range(0, pastelColors.Length)];
+            emitParams.startSize = Random.Range(0.06f, 0.16f);
+            emitParams.startLifetime = Random.Range(0.3f, 0.65f);
+
+            sparkParticleSystem.Emit(emitParams, 1);
+        }
+    }
+
+    private void OnDestroy() {
+        if (sparkParticleSystem != null && sparkParticleSystem.gameObject != null) {
+            var psr = sparkParticleSystem.GetComponent<ParticleSystemRenderer>();
+            if (psr != null && psr.sharedMaterial != null) {
+                Destroy(psr.sharedMaterial);
             }
         }
     }
