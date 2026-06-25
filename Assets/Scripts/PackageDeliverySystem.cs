@@ -329,9 +329,9 @@ public class PackageDeliverySystem : MonoBehaviour {
         bool isBuilding = collision.gameObject.CompareTag("Building") || 
                           (collision.transform.parent != null && collision.transform.parent.CompareTag("Building"));
         bool isSpot = collision.gameObject.CompareTag("Spot") || 
-                      (collision.transform.parent != null && collision.transform.parent.CompareTag("Spot")) ||
-                      collision.gameObject.GetComponentInParent<DeliverySpot>() != null;
-        bool isNPC = collision.gameObject.GetComponentInParent<NPCCarController>() != null;
+                      (collision.transform.parent != null && collision.transform.parent.CompareTag("Spot"));
+        bool isNPC = collision.gameObject.CompareTag("NPC") || 
+                     (collision.transform.parent != null && collision.transform.parent.CompareTag("NPC"));
 
         if (!isBuilding && !isSpot && !isNPC) return;
 

@@ -21,7 +21,7 @@ public class NPCCarController : MonoBehaviour {
 
     [Header("Collider Settings")]
     [Tooltip("Scale factor for the NPC body collider to make it smaller than the visual appearance.")]
-    public float colliderScaleFactor = 0.7f;
+    public float colliderScaleFactor = 0.8f;
 
     [Header("States")]
     public bool isSpunOut = false;
@@ -186,7 +186,10 @@ public class NPCCarController : MonoBehaviour {
             UpdateSpinOut();
             return;
         }
+    }
 
+    private void FixedUpdate() {
+        if (isRecovering || isPaused || isSpunOut) return;
         if (currentPath == null || currentPath.Count == 0) return;
 
         UpdateMovement();
@@ -240,26 +243,26 @@ public class NPCCarController : MonoBehaviour {
         float targetS = targetSpeed * speedFactor;
         
         // Decelerate/accelerate smoothly
-        currentSpeed = Mathf.MoveTowards(currentSpeed, targetS, acceleration * Time.deltaTime);
+        currentSpeed = Mathf.MoveTowards(currentSpeed, targetS, acceleration * Time.fixedDeltaTime);
 
         if (currentSpeed > 0.01f && distance > 0.01f) {
             Vector3 moveDirection = toWaypoint.normalized;
             
             // Kinematic movement
-            Vector3 newPosition = Vector3.MoveTowards(transform.position, targetWorldPosition, currentSpeed * Time.deltaTime);
+            Vector3 newPosition = Vector3.MoveTowards(transform.position, targetWorldPosition, currentSpeed * Time.fixedDeltaTime);
             rb.MovePosition(newPosition);
 
             // Kinematic rotation
             if (moveDirection.sqrMagnitude > 0.001f) {
                 Quaternion targetRot = Quaternion.LookRotation(moveDirection, Vector3.up);
-                Quaternion newRot = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.deltaTime);
+                Quaternion newRot = Quaternion.Slerp(transform.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime);
                 rb.MoveRotation(newRot);
             }
         }
 
         // Stuck detection
         if (currentSpeed < 0.2f && speedFactor > 0.8f) {
-            stuckTimer += Time.deltaTime;
+            stuckTimer += Time.fixedDeltaTime;
             if (stuckTimer > 5f) {
                 TrafficManager.Instance.DespawnNPC(this);
             }
@@ -298,10 +301,12 @@ public class NPCCarController : MonoBehaviour {
                 continue;
             }
 
-            // Ignore roads, ground, and buildings
-            if (hit.collider.GetComponentInParent<RoadPiece>() != null || 
-                hit.collider.name.Contains("GroundPlane") || 
-                hit.collider.name.Contains("Building")) {
+            // Only avoid Player and other NPCs (fast tag comparison)
+            bool isObstacle = hit.collider.CompareTag("NPC") || 
+                              hit.collider.CompareTag("Player") ||
+                              (hit.collider.transform.parent != null && (hit.collider.transform.parent.CompareTag("NPC") || hit.collider.transform.parent.CompareTag("Player")));
+
+            if (!isObstacle) {
                 continue;
             }
 
@@ -353,18 +358,35 @@ public class NPCCarController : MonoBehaviour {
         return cellCenter + rightPerp * laneOffset;
     }
 
+    public Vector3 GetVelocity() {
+        if (isSpunOut) {
+            return rb != null ? rb.linearVelocity : Vector3.zero;
+        }
+        return transform.forward * currentSpeed;
+    }
+
     private void OnCollisionEnter(Collision collision) {
         if (isSpunOut || isRecovering) return;
 
         // 1. Hit by Player
         if (collision.gameObject.CompareTag("Player")) {
             Rigidbody playerRb = collision.rigidbody;
-            float impactForce = collision.relativeVelocity.magnitude;
+            
+            // Get player's pre-collision velocity
+            Vector3 playerPrevVel = Vector3.zero;
+            CarController playerController = collision.gameObject.GetComponentInParent<CarController>();
+            if (playerController != null) {
+                playerPrevVel = playerController.PreviousLinearVelocity;
+            } else if (playerRb != null) {
+                playerPrevVel = playerRb.linearVelocity;
+            }
+
+            Vector3 npcVel = GetVelocity();
+            Vector3 relativeVelocityOfPlayer = playerPrevVel - npcVel;
+            float impactForce = relativeVelocityOfPlayer.magnitude;
             
             // If collision is forceful enough, spin out physically!
             if (impactForce > 4f) {
-                Vector3 relativeVelocityOfPlayer = collision.relativeVelocity;
-                
                 // Spin out NPC (uses VelocityChange so it ignores mass)
                 SpinOut(relativeVelocityOfPlayer, collision.contacts[0].point);
                 
@@ -386,16 +408,17 @@ public class NPCCarController : MonoBehaviour {
             }
         }
         // 2. Hit by another NPC
-        else {
+        else if (collision.gameObject.CompareTag("NPC") || (collision.transform.parent != null && collision.transform.parent.CompareTag("NPC"))) {
             NPCCarController otherNPC = collision.gameObject.GetComponentInParent<NPCCarController>();
             if (otherNPC != null) {
-                float impactForce = collision.relativeVelocity.magnitude;
+                Vector3 thisVel = GetVelocity();
+                Vector3 otherVel = otherNPC.GetVelocity();
+                Vector3 relativeVelocityOfOther = otherVel - thisVel;
+                float impactForce = relativeVelocityOfOther.magnitude;
                 
                 if (otherNPC.isSpunOut && impactForce > 3f) {
-                    Vector3 impactDir = collision.relativeVelocity;
-                    
                     // Spin out this NPC in the direction of the hit (reduced force for NPC-to-NPC impact)
-                    SpinOut(impactDir * 0.3f, collision.contacts[0].point);
+                    SpinOut(relativeVelocityOfOther * 0.3f, collision.contacts[0].point);
                 } else {
                     // Minor bump from another NPC -> Shock-pause for 2 seconds
                     TriggerShockPause(2.0f);
@@ -408,8 +431,9 @@ public class NPCCarController : MonoBehaviour {
         if (isSpunOut || isRecovering) return;
 
         // Check if we hit another NPC
-        NPCCarController otherNPC = other.gameObject.GetComponentInParent<NPCCarController>();
-        if (otherNPC != null && otherNPC != this) {
+        if (other.gameObject.CompareTag("NPC") || (other.transform.parent != null && other.transform.parent.CompareTag("NPC"))) {
+            NPCCarController otherNPC = other.gameObject.GetComponentInParent<NPCCarController>();
+            if (otherNPC != null && otherNPC != this) {
             // Let OnCollisionEnter handle it if either is already spun out / recovering (since they become dynamic physics bodies)
             if (otherNPC.isSpunOut || otherNPC.isRecovering || isSpunOut || isRecovering) return;
 

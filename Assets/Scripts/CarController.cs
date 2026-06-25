@@ -87,6 +87,7 @@ public class CarController : MonoBehaviour {
     public Wheel rearRight;
 
     private Rigidbody rb;
+    public Vector3 PreviousLinearVelocity { get; private set; }
     private WheelFrictionCurve originalRearLeftSideways;
     private WheelFrictionCurve originalRearRightSideways;
     private WheelFrictionCurve originalRearLeftForward;
@@ -373,6 +374,8 @@ public class CarController : MonoBehaviour {
 
         // 6. Safe Position Tracking
         TrackSafePosition();
+
+        PreviousLinearVelocity = rb != null ? rb.linearVelocity : Vector3.zero;
     }
 
     private void Update() {
@@ -702,39 +705,63 @@ public class CarController : MonoBehaviour {
     private void OnCollisionEnter(Collision collision) {
         if (collision.contacts.Length == 0) return;
 
-        // Ignore road/ground pieces
-        if (collision.gameObject.GetComponentInParent<RoadPiece>() != null) return;
+        // Check tags first as a fast path
+        bool isNPC = collision.gameObject.CompareTag("NPC") || (collision.transform.parent != null && collision.transform.parent.CompareTag("NPC"));
+        bool isBuilding = collision.gameObject.CompareTag("Building") || (collision.transform.parent != null && collision.transform.parent.CompareTag("Building"));
+        bool isSpot = collision.gameObject.CompareTag("Spot") || (collision.transform.parent != null && collision.transform.parent.CompareTag("Spot"));
+
+        if (!isNPC && !isBuilding && !isSpot) {
+            // Ignore road/ground pieces
+            if (collision.gameObject.GetComponentInParent<RoadPiece>() != null) return;
+        }
 
         Vector3 contactNormal = collision.contacts[0].normal;
         // Filter out floor/ceiling hits (we only bounce off walls/buildings)
         if (Mathf.Abs(contactNormal.y) > 0.6f) return;
 
+        // Get NPC controller if we hit an NPC
+        NPCCarController npc = null;
+        if (isNPC) {
+            npc = collision.gameObject.GetComponentInParent<NPCCarController>();
+        }
+        bool hitNPC = npc != null;
+
         // Calculate collision impact speed
-        float impactSpeed = collision.relativeVelocity.magnitude;
+        float impactSpeed;
+        if (hitNPC) {
+            Vector3 playerPrevVel = PreviousLinearVelocity;
+            Vector3 npcVel = npc.GetVelocity();
+            impactSpeed = (playerPrevVel - npcVel).magnitude;
+        } else {
+            impactSpeed = collision.relativeVelocity.magnitude;
+        }
+
         if (impactSpeed < minBounceSpeed) return;
 
         // Check bounce cooldown
         if (Time.time < lastBounceTime + bounceCooldown) return;
         lastBounceTime = Time.time;
 
-        // Rebound direction (flattened along Y axis to keep it horizontal)
-        Vector3 bounceNormal = contactNormal;
-        bounceNormal.y = 0f;
-        bounceNormal.Normalize();
+        if (!hitNPC) {
+            // Rebound direction (flattened along Y axis to keep it horizontal)
+            Vector3 bounceNormal = contactNormal;
+            bounceNormal.y = 0f;
+            bounceNormal.Normalize();
 
-        // Apply rebound velocity impulse
-        Vector3 reboundVel = bounceNormal * impactSpeed * bounceForceFactor;
-        
-        // Add vertical hop (upwards impulse) to make the bounce feel juicy
-        reboundVel += Vector3.up * impactSpeed * verticalBounceForce;
+            // Apply rebound velocity impulse
+            Vector3 reboundVel = bounceNormal * impactSpeed * bounceForceFactor;
+            
+            // Add vertical hop (upwards impulse) to make the bounce feel juicy
+            reboundVel += Vector3.up * impactSpeed * verticalBounceForce;
 
-        // Cancel out velocity moving directly into the obstacle
-        Vector3 currentVel = rb.linearVelocity;
-        float normalVel = Vector3.Dot(currentVel, bounceNormal);
-        if (normalVel < 0f) {
-            currentVel -= bounceNormal * normalVel;
+            // Cancel out velocity moving directly into the obstacle
+            Vector3 currentVel = rb.linearVelocity;
+            float normalVel = Vector3.Dot(currentVel, bounceNormal);
+            if (normalVel < 0f) {
+                currentVel -= bounceNormal * normalVel;
+            }
+            rb.linearVelocity = currentVel + reboundVel;
         }
-        rb.linearVelocity = currentVel + reboundVel;
 
         // Apply stun
         stunTimer = bounceStunDuration;

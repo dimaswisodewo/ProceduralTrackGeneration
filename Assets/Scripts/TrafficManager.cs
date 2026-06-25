@@ -125,8 +125,11 @@ public class TrafficManager : MonoBehaviour {
             DestroyImmediate(wc);
         }
 
-        // Tag properly as Untagged or NPC (not Player)
-        templateObj.tag = "Untagged";
+        // Tag properly as NPC (not Player)
+        templateObj.tag = "NPC";
+        foreach (Transform child in templateObj.GetComponentsInChildren<Transform>(true)) {
+            child.gameObject.tag = "NPC";
+        }
 
         // Add the NPCCarController component
         NPCCarController npcController = templateObj.AddComponent<NPCCarController>();
