@@ -1008,7 +1008,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DialogueTriggerExample
   jsonResourcePath: intro_dialogue
   conversationAsset: {fileID: 0}
-  triggerOnStart: 1
+  triggerOnStart: 0
   triggerKey: 116
 --- !u!4 &1395344545
 Transform:

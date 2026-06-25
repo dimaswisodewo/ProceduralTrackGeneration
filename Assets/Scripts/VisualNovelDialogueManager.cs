@@ -183,6 +183,8 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     private int totalVisibleTranslationChars = 0;
     private Coroutine typingCoroutine;
     private CanvasGroup containerCanvasGroup;
+    private Color originalSpeakerTextColor = Color.white;
+
 
     // Fast mapping for image panels runtime control
     private Dictionary<string, ImagePanelConfig> panelMap = new Dictionary<string, ImagePanelConfig>();
@@ -203,6 +205,10 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     private void Start() {
         // Automatically hook up custom font manager fonts to our text components
         ApplyCustomFonts();
+
+        if (speakerNameText != null) {
+            originalSpeakerTextColor = speakerNameText.color;
+        }
     }
 
     private void Update() {
@@ -357,12 +363,40 @@ public class VisualNovelDialogueManager : MonoBehaviour {
         DialogueLine line = currentLines[currentLineIndex];
         OnLineStart?.Invoke(line);
 
-        // Update speaker name UI
+        // Update speaker name UI with transition effects
         if (speakerNameText != null) {
+            bool nameChanged = speakerNameText.text != line.speakerName;
             speakerNameText.text = line.speakerName;
+            
+            if (nameChanged && !string.IsNullOrEmpty(line.speakerName)) {
+                // Kill active tweens
+                speakerNameText.transform.DOKill(true);
+                speakerNameText.DOKill(true);
+                
+                // Reset scale
+                speakerNameText.transform.localScale = Vector3.one;
+                
+                // Set alpha to 0 and fade in to original color
+                Color startCol = originalSpeakerTextColor;
+                startCol.a = 0f;
+                speakerNameText.color = startCol;
+                
+                speakerNameText.DOColor(originalSpeakerTextColor, 0.25f).SetUpdate(true);
+                speakerNameText.transform.DOPunchScale(new Vector3(0.12f, 0.12f, 0f), 0.3f, 6, 0.5f).SetUpdate(true);
+            }
         }
+
         if (speakerNameContainer != null) {
-            speakerNameContainer.SetActive(!string.IsNullOrEmpty(line.speakerName));
+            bool wasActive = speakerNameContainer.activeSelf;
+            bool shouldBeActive = !string.IsNullOrEmpty(line.speakerName);
+            speakerNameContainer.SetActive(shouldBeActive);
+            
+            if (shouldBeActive && !wasActive) {
+                // Entry pop for the speaker container itself
+                speakerNameContainer.transform.DOKill(true);
+                speakerNameContainer.transform.localScale = Vector3.zero;
+                speakerNameContainer.transform.DOScale(Vector3.one, 0.25f).SetEase(Ease.OutBack).SetUpdate(true);
+            }
         }
 
         // Trigger dynamic image panel operations
