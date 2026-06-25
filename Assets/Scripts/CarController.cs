@@ -124,7 +124,8 @@ public class CarController : MonoBehaviour {
     [Header("Damage Visuals")]
     public ParticleSystem firePrefab;
     public ParticleSystem smokePrefab;
-    public Vector3 fireSmokeOffset = new Vector3(0f, 0.25f, 0.8f);
+    public Vector3 fireOffset = new Vector3(0f, 0f, 0.5f);
+    public Vector3 smokeOffset = new Vector3(0f, 0.5f, 0.5f);
 
     private ParticleSystem activeFireInstance;
     private ParticleSystem activeSmokeInstance;
@@ -1117,12 +1118,12 @@ public class CarController : MonoBehaviour {
 
         // Fire Effect
         if (activeFireInstance == null) {
-            activeFireInstance = VisualEffectUtility.CreateFireParticles(transform, fireSmokeOffset, firePrefab);
+            activeFireInstance = VisualEffectUtility.CreateFireParticles(transform, fireOffset, firePrefab);
         }
 
         // Smoke Effect
         if (activeSmokeInstance == null) {
-            activeSmokeInstance = VisualEffectUtility.CreateSmokeParticles(transform, fireSmokeOffset, smokePrefab);
+            activeSmokeInstance = VisualEffectUtility.CreateSmokeParticles(transform, smokeOffset, smokePrefab);
         }
 
         if (activeFireInstance != null && !activeFireInstance.isPlaying) {
