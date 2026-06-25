@@ -7,7 +7,7 @@ public class CameraFollow : MonoBehaviour {
 
     [Header("Offset Settings")]
     public float distance = 6f;       // Distance behind target
-    public float height = 2.5f;       // Height above target
+    public float height = 12f;       // Height above target
     public Vector3 lookAtOffset = new Vector3(0f, 1f, 0f);
 
     [Header("Damping (Smoothness)")]
@@ -26,6 +26,7 @@ public class CameraFollow : MonoBehaviour {
     private Camera cam;
     private float currentYaw;
     private bool isInitialized = false;
+    private bool isFirstPerson = false;
     private Vector3 currentFollowPosition;
     private Vector3 targetLocalPosition = Vector3.zero;
     private Quaternion targetLocalRotation = Quaternion.identity;
@@ -95,6 +96,17 @@ public class CameraFollow : MonoBehaviour {
 
         if (!isInitialized) {
             InitializeTargetTracking();
+        }
+
+        if (CarInputManager.Instance != null && CarInputManager.Instance.ToggleCameraPressed) {
+            isFirstPerson = !isFirstPerson;
+            if (isFirstPerson) {
+                distance = 3f;
+                height = 1f;
+            } else {
+                distance = 6f;
+                height = 12f;
+            }
         }
 
         // Cinematic Orbit Camera on GameOver / Victory State

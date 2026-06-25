@@ -14,6 +14,7 @@ public class CarInputManager : MonoBehaviour {
     public bool Drift { get; private set; }
     public bool ResetPressed { get; private set; }
     public bool RepositionPressed { get; private set; }
+    public bool ToggleCameraPressed { get; private set; }
 
     [Header("Keyboard Settings")]
     public float keyboardSteerSpeed = 4f;
@@ -28,6 +29,7 @@ public class CarInputManager : MonoBehaviour {
     private bool mobileDrift;
     private bool mobileReset;
     private bool mobileReposition;
+    private bool mobileToggleCamera;
 
     private void Awake() {
         if (Instance != null && Instance != this) {
@@ -47,6 +49,7 @@ public class CarInputManager : MonoBehaviour {
         bool keyboardDrift = false;
         bool keyboardReset = false;
         bool keyboardReposition = false;
+        bool keyboardToggleCamera = false;
         
         bool hasVerticalInput = false;
         bool hasHorizontalInput = false;
@@ -78,6 +81,7 @@ public class CarInputManager : MonoBehaviour {
             keyboardDrift = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
             keyboardReset = keyboard.rKey.wasPressedThisFrame;
             keyboardReposition = keyboard.tKey.wasPressedThisFrame;
+            keyboardToggleCamera = keyboard.fKey.wasPressedThisFrame;
 
             if (keyboard.escapeKey.wasPressedThisFrame) {
 #if UNITY_EDITOR
@@ -108,6 +112,7 @@ public class CarInputManager : MonoBehaviour {
         keyboardDrift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         keyboardReset = Input.GetKeyDown(KeyCode.R);
         keyboardReposition = Input.GetKeyDown(KeyCode.T);
+        keyboardToggleCamera = Input.GetKeyDown(KeyCode.F);
 
         if (Input.GetKeyDown(KeyCode.Escape)) {
 #if UNITY_EDITOR
@@ -163,6 +168,9 @@ public class CarInputManager : MonoBehaviour {
 
         RepositionPressed = keyboardReposition || mobileReposition;
         mobileReposition = false;
+
+        ToggleCameraPressed = keyboardToggleCamera || mobileToggleCamera;
+        mobileToggleCamera = false;
     }
 
     // Methods for Mobile UI (Steering Wheel, Pedals, Buttons) to update states
@@ -192,5 +200,9 @@ public class CarInputManager : MonoBehaviour {
 
     public void SetMobileReposition(bool value) {
         mobileReposition = value;
+    }
+
+    public void SetMobileToggleCamera(bool value) {
+        mobileToggleCamera = value;
     }
 }
