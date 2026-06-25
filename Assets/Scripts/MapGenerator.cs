@@ -56,6 +56,7 @@ public class MapGenerator : MonoBehaviour {
     private List<DeliverySpot> spawnedDeliverySpots = new List<DeliverySpot>();
 
     public static MapGenerator Instance { get; private set; }
+    public static bool IsRestarting { get; set; } = false;
 
     public HashSet<GridPos> RoadCells => roadCells;
     public HashSet<GridPos> SpotCells => spotCells;
@@ -92,8 +93,9 @@ public class MapGenerator : MonoBehaviour {
     private System.Collections.IEnumerator GenerateMapCoroutine() {
         // Show generation/black panel
         if (UIManager.Instance != null) {
-            UIManager.Instance.SetGenerationPanelActive(true);
+            UIManager.Instance.SetGenerationPanelActive(true, IsRestarting);
         }
+        IsRestarting = false;
 
         // Wait one frame to let the UIManager display/render the panel
         yield return null;

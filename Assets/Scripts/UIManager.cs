@@ -45,6 +45,7 @@ public class UIManager : MonoBehaviour {
     private Text victoryText;
     private Image healthBarFillImage;
     private Text healthBarText;
+    private Text repositionHelpText;
 
     private Coroutine warningCoroutine;
     private Coroutine statusSuccessCoroutine;
@@ -152,6 +153,21 @@ public class UIManager : MonoBehaviour {
         if (victoryTextObject != null) {
             victoryText = victoryTextObject.GetComponent<Text>();
         }
+
+        // Resolve Reposition Help Text
+        if (repositionHelpText == null) {
+            repositionHelpText = GetOrCreateUIText("RepositionHelpText", new Vector2(-25f, 25f), new Vector2(400f, 30f), 13, new Color(0.75f, 0.75f, 0.75f, 0.7f), TextAnchor.LowerRight);
+            if (repositionHelpText != null) {
+                RectTransform rect = repositionHelpText.GetComponent<RectTransform>();
+                rect.anchorMin = new Vector2(1f, 0f);
+                rect.anchorMax = new Vector2(1f, 0f);
+                rect.pivot = new Vector2(1f, 0f);
+                rect.anchoredPosition = new Vector2(-25f, 25f);
+            }
+        }
+        if (repositionHelpText != null) {
+            repositionHelpText.text = "If you get stuck, press T to reposition your car";
+        }
     }
 
     public void SetStateUI(PackageDeliverySystem.DeliveryState state) {
@@ -197,13 +213,13 @@ public class UIManager : MonoBehaviour {
                     if (damageTextObject != null) {
                         damageTextObject.SetActive(true);
                         if (damageText != null) {
-                            damageText.text = "DOCUMENTS RUINED! Press R to Restart";
+                            damageText.text = "DOCUMENTS RUINED! Press R to Restart the game.";
                         }
                     }
                     if (objectivesTextObject != null) {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
-                            objectivesText.text = "OBJECTIVE: Press R to Restart the game";
+                            objectivesText.text = "DOCUMENTS RUINED! Press R to Restart the game.";
                             objectivesText.color = new Color(0.95f, 0.45f, 0.45f); // Pastel coral
                         }
                     }
@@ -385,20 +401,35 @@ public class UIManager : MonoBehaviour {
         return text;
     }
 
-    public void SetGenerationPanelActive(bool active) {
+    public void SetGenerationPanelActive(bool active, bool instant = false) {
         if (generationPanel != null) {
+            if (active) {
+                generationPanel.transform.SetAsLastSibling();
+            }
             Image img = generationPanel.GetComponent<Image>();
             if (img != null) {
                 img.DOComplete();
                 if (active) {
                     generationPanel.SetActive(true);
                     Color c = img.color;
-                    c.a = 0f;
-                    img.color = c;
-                    img.DOFade(1f, 0.4f).SetUpdate(true);
+                    if (instant) {
+                        c.a = 1f;
+                        img.color = c;
+                    } else {
+                        c.a = 0f;
+                        img.color = c;
+                        img.DOFade(1f, 0.4f).SetUpdate(true);
+                    }
                 } else {
-                    img.DOFade(0f, 0.5f).SetUpdate(true)
-                        .OnComplete(() => generationPanel.SetActive(false));
+                    if (instant) {
+                        Color c = img.color;
+                        c.a = 0f;
+                        img.color = c;
+                        generationPanel.SetActive(false);
+                    } else {
+                        img.DOFade(0f, 0.5f).SetUpdate(true)
+                            .OnComplete(() => generationPanel.SetActive(false));
+                    }
                 }
             } else {
                 generationPanel.SetActive(active);

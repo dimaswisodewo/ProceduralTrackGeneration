@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 public class PackageDeliverySystem : MonoBehaviour {
@@ -38,6 +39,7 @@ public class PackageDeliverySystem : MonoBehaviour {
     private Material pointerArrowMaterial;
 
     private float spawnTime;
+    private bool isRestarting = false;
 
     private void Awake() {
         Instance = this;
@@ -289,9 +291,29 @@ public class PackageDeliverySystem : MonoBehaviour {
 #endif
         }
 
-        if (resetPressed) {
-            Time.timeScale = 1f;
-            UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        if (resetPressed && !isRestarting) {
+            StartCoroutine(RestartGameCoroutine());
+        }
+    }
+
+    private IEnumerator RestartGameCoroutine() {
+        isRestarting = true;
+        Time.timeScale = 1f;
+
+        MapGenerator.IsRestarting = true;
+
+        if (UIManager.Instance != null) {
+            UIManager.Instance.SetGenerationPanelActive(true);
+        }
+
+        // Wait for the generation panel fade animation to finish
+        yield return new WaitForSecondsRealtime(0.4f);
+
+        string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        AsyncOperation asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(sceneName);
+
+        while (!asyncLoad.isDone) {
+            yield return null;
         }
     }
 
