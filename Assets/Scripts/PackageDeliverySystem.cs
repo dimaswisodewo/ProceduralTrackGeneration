@@ -322,28 +322,20 @@ public class PackageDeliverySystem : MonoBehaviour {
         }
     }
 
-    private void OnCollisionEnter(Collision collision) {
+    public void ProcessCollisionDamage(float impactSpeed, bool isNPC) {
         if (currentState != DeliveryState.CollectingStamps && currentState != DeliveryState.HeadingToFinalDestination) return;
 
-        // Collision damage applies to Building, Spot, and NPC tagged/component objects
-        bool isBuilding = collision.gameObject.CompareTag("Building") || 
-                          (collision.transform.parent != null && collision.transform.parent.CompareTag("Building"));
-        bool isSpot = collision.gameObject.CompareTag("Spot") || 
-                      (collision.transform.parent != null && collision.transform.parent.CompareTag("Spot"));
-        bool isNPC = collision.gameObject.CompareTag("NPC") || 
-                     (collision.transform.parent != null && collision.transform.parent.CompareTag("NPC"));
-
-        if (!isBuilding && !isSpot && !isNPC) return;
-
-        float impactSpeed = collision.relativeVelocity.magnitude;
         if (impactSpeed > minCollisionSpeed) {
             float excess = impactSpeed - minCollisionSpeed;
-            float damage = excess * collisionDamageMultiplier;
-            TakeDamage(damage);
+            int damage = Mathf.RoundToInt(excess * collisionDamageMultiplier);
+            
+            if (damage > 0) {
+                TakeDamage(damage);
 
-            if (UIManager.Instance != null) {
-                string msg = isNPC ? $"TRAFFIC CRASH! -{damage:F0}%" : $"IMPACT! -{damage:F0}%";
-                UIManager.Instance.FlashDamageText(msg);
+                if (UIManager.Instance != null) {
+                    string msg = isNPC ? $"TRAFFIC CRASH! -{damage}%" : $"IMPACT! -{damage}%";
+                    UIManager.Instance.FlashDamageText(msg);
+                }
             }
         }
     }

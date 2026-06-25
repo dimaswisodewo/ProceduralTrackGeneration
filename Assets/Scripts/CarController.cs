@@ -782,6 +782,11 @@ public class CarController : MonoBehaviour {
             float shakeDuration = Mathf.Clamp(impactSpeed * 0.015f, 0.1f, 0.35f);
             CameraFollow.Instance.TriggerShake(shakeDuration, shakeMagnitude);
         }
+
+        // Notify PackageDeliverySystem to process collision damage centrally
+        if (PackageDeliverySystem.Instance != null) {
+            PackageDeliverySystem.Instance.ProcessCollisionDamage(impactSpeed, isNPC);
+        }
     }
 
     private void TriggerSquashAndStretch(Vector3 contactNormal, float impactSpeed) {
