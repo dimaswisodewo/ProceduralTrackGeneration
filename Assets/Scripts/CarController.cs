@@ -398,9 +398,9 @@ public class CarController : MonoBehaviour {
     }
 
     private void Update() {
-        // Handle Reset/Respawn Input
-        if (CarInputManager.Instance != null && CarInputManager.Instance.ResetPressed) {
-            RespawnAtLastSafePosition();
+        // Handle Reposition Input
+        if (CarInputManager.Instance != null && CarInputManager.Instance.RepositionPressed) {
+            RepositionToNearestRoad();
         }
 
         // Update visual mesh positions and rotations to match physical colliders
@@ -646,6 +646,114 @@ public class CarController : MonoBehaviour {
 
         // Reset steer helper tracker to avoid massive velocity changes on teleport
         lastRotationYaw = lastSafeRotation.eulerAngles.y;
+
+        // Reset wheel colliders to prevent physics glitches upon teleport
+        ResetWheelState(frontLeft);
+        ResetWheelState(frontRight);
+        ResetWheelState(rearLeft);
+        ResetWheelState(rearRight);
+
+        RestoreAllFriction();
+        if (originalRearLeftSideways.stiffness > 0f) {
+            currentRearSidewaysStiffness = originalRearLeftSideways.stiffness;
+        }
+        lastHandbrakeActive = false;
+        lastDriftActive = false;
+        isDrifting = false;
+
+        Physics.SyncTransforms();
+
+        if (CameraFollow.Instance != null) {
+            CameraFollow.Instance.ResetCamera();
+        }
+
+        // Notify PackageDeliverySystem to restore/reset the package state
+        if (PackageDeliverySystem.Instance != null) {
+            PackageDeliverySystem.Instance.OnCarRespawn();
+        }
+
+        // Stop and clear fire/smoke effects immediately on respawn
+        StopFireEffectsImmediate();
+    }
+
+    private void RepositionToNearestRoad() {
+        Vector3 targetPos = lastSafePosition;
+        Quaternion targetRot = lastSafeRotation;
+        bool foundNearest = false;
+
+        if (MapGenerator.Instance != null) {
+            HashSet<MapGenerator.GridPos> roadCells = MapGenerator.Instance.RoadCells;
+            HashSet<MapGenerator.GridPos> spotCells = MapGenerator.Instance.SpotCells;
+            float cellSize = MapGenerator.Instance.cellSize;
+
+            Vector3 carPos = transform.position;
+            Vector3 nearestRoadPos = Vector3.zero;
+            float minSqrDistance = float.MaxValue;
+
+            // Search in roadCells
+            if (roadCells != null) {
+                foreach (var cell in roadCells) {
+                    Vector3 roadPos = new Vector3(cell.x * cellSize, 0f, cell.z * cellSize);
+                    float sqrDist = (carPos - roadPos).sqrMagnitude;
+                    if (sqrDist < minSqrDistance) {
+                        minSqrDistance = sqrDist;
+                        nearestRoadPos = roadPos;
+                        foundNearest = true;
+                    }
+                }
+            }
+
+            // Search in spotCells too
+            if (spotCells != null) {
+                foreach (var cell in spotCells) {
+                    Vector3 spotPos = new Vector3(cell.x * cellSize, 0f, cell.z * cellSize);
+                    float sqrDist = (carPos - spotPos).sqrMagnitude;
+                    if (sqrDist < minSqrDistance) {
+                        minSqrDistance = sqrDist;
+                        nearestRoadPos = spotPos;
+                        foundNearest = true;
+                    }
+                }
+            }
+
+            if (foundNearest) {
+                targetPos = nearestRoadPos;
+                
+                // Align rotation: keep current yaw, but make roll and pitch flat
+                Vector3 forward = transform.forward;
+                forward.y = 0f;
+                if (forward.sqrMagnitude > 0.001f) {
+                    targetRot = Quaternion.LookRotation(forward.normalized, Vector3.up);
+                } else {
+                    targetRot = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+                }
+
+                // Update tracking variables to this new location
+                lastSafePosition = targetPos;
+                lastSafeRotation = targetRot;
+            }
+        }
+
+        // Apply reposition (exactly similar to respawn)
+        if (rb == null) {
+            rb = GetComponent<Rigidbody>();
+        }
+        if (rb != null) {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        Vector3 respawnPos = targetPos + Vector3.up * 0.5f;
+        transform.position = respawnPos;
+        transform.rotation = targetRot;
+        
+        if (rb != null) {
+            rb.position = respawnPos;
+            rb.rotation = targetRot;
+        }
+
+        // Reset steer helper tracker to avoid massive velocity changes on teleport
+        lastRotationYaw = targetRot.eulerAngles.y;
 
         // Reset wheel colliders to prevent physics glitches upon teleport
         ResetWheelState(frontLeft);

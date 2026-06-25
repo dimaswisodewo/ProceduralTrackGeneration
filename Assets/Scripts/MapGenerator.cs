@@ -67,6 +67,8 @@ public class MapGenerator : MonoBehaviour {
     private CarController cachedCarController;
 
     private void Awake() {
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = 60;
         Instance = this;
         
         // Find the car and deactivate it during map generation

@@ -183,7 +183,7 @@ public class UIManager : MonoBehaviour {
                 if (gameOverTextObject != null) {
                     gameOverTextObject.SetActive(true);
                     if (gameOverText != null) {
-                        gameOverText.text = "DOCUMENTS RUINED! Press R to Respawn";
+                        gameOverText.text = "DOCUMENTS RUINED! Press R to Restart";
                     }
                     gameOverTextObject.transform.DOComplete();
                     gameOverTextObject.transform.localScale = Vector3.zero;
@@ -197,13 +197,13 @@ public class UIManager : MonoBehaviour {
                     if (damageTextObject != null) {
                         damageTextObject.SetActive(true);
                         if (damageText != null) {
-                            damageText.text = "DOCUMENTS RUINED! Press R to Respawn";
+                            damageText.text = "DOCUMENTS RUINED! Press R to Restart";
                         }
                     }
                     if (objectivesTextObject != null) {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
-                            objectivesText.text = "OBJECTIVE: Press R to Respawn at last safe position";
+                            objectivesText.text = "OBJECTIVE: Press R to Restart the game";
                             objectivesText.color = new Color(0.95f, 0.45f, 0.45f); // Pastel coral
                         }
                     }

@@ -13,6 +13,7 @@ public class CarInputManager : MonoBehaviour {
     public bool Handbrake { get; private set; }
     public bool Drift { get; private set; }
     public bool ResetPressed { get; private set; }
+    public bool RepositionPressed { get; private set; }
 
     [Header("Keyboard Settings")]
     public float keyboardSteerSpeed = 4f;
@@ -26,6 +27,7 @@ public class CarInputManager : MonoBehaviour {
     private bool mobileHandbrake;
     private bool mobileDrift;
     private bool mobileReset;
+    private bool mobileReposition;
 
     private void Awake() {
         if (Instance != null && Instance != this) {
@@ -44,6 +46,7 @@ public class CarInputManager : MonoBehaviour {
         bool keyboardHandbrake = false;
         bool keyboardDrift = false;
         bool keyboardReset = false;
+        bool keyboardReposition = false;
         
         bool hasVerticalInput = false;
         bool hasHorizontalInput = false;
@@ -74,6 +77,7 @@ public class CarInputManager : MonoBehaviour {
             keyboardHandbrake = keyboard.spaceKey.isPressed;
             keyboardDrift = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
             keyboardReset = keyboard.rKey.wasPressedThisFrame;
+            keyboardReposition = keyboard.tKey.wasPressedThisFrame;
 
             if (keyboard.escapeKey.wasPressedThisFrame) {
 #if UNITY_EDITOR
@@ -103,6 +107,7 @@ public class CarInputManager : MonoBehaviour {
         keyboardHandbrake = Input.GetKey(KeyCode.Space);
         keyboardDrift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         keyboardReset = Input.GetKeyDown(KeyCode.R);
+        keyboardReposition = Input.GetKeyDown(KeyCode.T);
 
         if (Input.GetKeyDown(KeyCode.Escape)) {
 #if UNITY_EDITOR
@@ -155,6 +160,9 @@ public class CarInputManager : MonoBehaviour {
         // Reset inputs: keyboard or mobile trigger
         ResetPressed = keyboardReset || mobileReset;
         mobileReset = false; // Reset mobile trigger to ensure it acts as a single-frame pulse
+
+        RepositionPressed = keyboardReposition || mobileReposition;
+        mobileReposition = false;
     }
 
     // Methods for Mobile UI (Steering Wheel, Pedals, Buttons) to update states
@@ -180,5 +188,9 @@ public class CarInputManager : MonoBehaviour {
 
     public void SetMobileReset(bool value) {
         mobileReset = value;
+    }
+
+    public void SetMobileReposition(bool value) {
+        mobileReposition = value;
     }
 }

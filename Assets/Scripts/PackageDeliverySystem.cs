@@ -240,32 +240,7 @@ public class PackageDeliverySystem : MonoBehaviour {
 
     public void OnCarRespawn() {
         spawnTime = Time.time;
-        if (currentState == DeliveryState.Broken) {
-            SetState(DeliveryState.CollectingStamps);
-            if (collectedStampSpots.Count == stampSpots.Count && stampSpots.Count > 0) {
-                SetState(DeliveryState.HeadingToFinalDestination);
-                if (finalDestinationSpot != null) {
-                    finalDestinationSpot.SetAsTarget(true, isPickup: false);
-                }
-            }
-            if (UIManager.Instance != null) {
-                string nextText = "";
-                Color nextColor = Color.white;
-                if (currentState == DeliveryState.CollectingStamps) {
-                    nextText = $"OBJECTIVE: Collect stamps from each location. ({collectedStampSpots.Count}/{stampSpots.Count} collected)";
-                    nextColor = new Color(0.5f, 0.75f, 0.95f);
-                } else if (currentState == DeliveryState.HeadingToFinalDestination) {
-                    nextText = "OBJECTIVE: Go to the FINAL DESTINATION to finish!";
-                    nextColor = new Color(0.95f, 0.65f, 0.45f);
-                }
-                UIManager.Instance.FlashObjectiveSuccessText("Documents Restored! Drive carefully.", nextText, nextColor);
-            }
-        } else if (currentState == DeliveryState.CollectingStamps || currentState == DeliveryState.HeadingToFinalDestination) {
-            packageHealth = 100f;
-            if (UIManager.Instance != null) {
-                UIManager.Instance.UpdateHealthSlider(packageHealth);
-            }
-        }
+        // Do NOT restore packageHealth or change currentState. Repositioning does not heal or reset the game.
     }
 
     private void TakeDamage(float amount) {
@@ -300,25 +275,23 @@ public class PackageDeliverySystem : MonoBehaviour {
             }
         }
 
-        // Handle GameOver restart / reload scene
-        if (currentState == DeliveryState.GameOver) {
-            bool resetPressed = false;
-            if (CarInputManager.Instance != null) {
-                resetPressed = CarInputManager.Instance.ResetPressed;
-            } else {
+        // Reset the whole state of the game anytime 'R' (ResetPressed) is pressed
+        bool resetPressed = false;
+        if (CarInputManager.Instance != null) {
+            resetPressed = CarInputManager.Instance.ResetPressed;
+        } else {
 #if ENABLE_INPUT_SYSTEM
-                if (UnityEngine.InputSystem.Keyboard.current != null) {
-                    resetPressed = UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame;
-                }
+            if (UnityEngine.InputSystem.Keyboard.current != null) {
+                resetPressed = UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame;
+            }
 #else
-                resetPressed = Input.GetKeyDown(KeyCode.R);
+            resetPressed = Input.GetKeyDown(KeyCode.R);
 #endif
-            }
+        }
 
-            if (resetPressed) {
-                Time.timeScale = 1f;
-                UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
-            }
+        if (resetPressed) {
+            Time.timeScale = 1f;
+            UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
         }
     }
 
