@@ -1305,9 +1305,14 @@ public class CarController : MonoBehaviour {
         var psr = go.GetComponent<ParticleSystemRenderer>();
         psr.renderMode = ParticleSystemRenderMode.Billboard;
 
-        Shader shader = FindFireShader();
-        Material psMat = new Material(shader);
-        ConfigureURPMaterial(psMat, true);
+        Material psMat = Resources.Load<Material>("Materials/FireMaterial");
+        if (psMat != null) {
+            psMat = Instantiate(psMat);
+        } else {
+            Shader shader = FindFireShader();
+            psMat = new Material(shader);
+            ConfigureURPMaterial(psMat, true);
+        }
         psr.sharedMaterial = psMat;
 
         return ps;
@@ -1369,9 +1374,14 @@ public class CarController : MonoBehaviour {
         var psr = go.GetComponent<ParticleSystemRenderer>();
         psr.renderMode = ParticleSystemRenderMode.Billboard;
 
-        Shader shader = FindSmokeShader();
-        Material psMat = new Material(shader);
-        ConfigureURPMaterial(psMat, false);
+        Material psMat = Resources.Load<Material>("Materials/SmokeMaterial");
+        if (psMat != null) {
+            psMat = Instantiate(psMat);
+        } else {
+            Shader shader = FindSmokeShader();
+            psMat = new Material(shader);
+            ConfigureURPMaterial(psMat, false);
+        }
         psr.sharedMaterial = psMat;
 
         return ps;
