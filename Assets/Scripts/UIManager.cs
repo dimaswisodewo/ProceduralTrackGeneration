@@ -86,6 +86,11 @@ public class UIManager : MonoBehaviour {
         // 2. Resolve/create the text components
         SetupTextComponents();
 
+        // Apply new fonts to all Text components in the scene
+        if (FontManager.Instance != null) {
+            FontManager.Instance.ApplyFontsToAllUI();
+        }
+
         // 3. Reset states for new run
         if (damageTextObject != null) damageTextObject.SetActive(false);
         if (gameOverTextObject != null) gameOverTextObject.SetActive(false);
@@ -362,15 +367,20 @@ public class UIManager : MonoBehaviour {
         rect.pivot = new Vector2(0.5f, 1f);
 
         Text text = go.AddComponent<Text>();
-        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (text.font == null) {
+        if (FontManager.Instance != null && FontManager.Instance.RegularFont != null) {
+            text.font = FontManager.Instance.RegularFont;
+        } else {
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         }
         text.fontSize = fontSize;
         text.color = color;
         text.alignment = alignment;
 
-        go.AddComponent<Shadow>();
+        Shadow shadow = go.AddComponent<Shadow>();
+        if (shadow != null) {
+            shadow.effectColor = Color.black;
+            shadow.effectDistance = new Vector2(1.5f, -1.5f);
+        }
 
         return text;
     }
