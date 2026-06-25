@@ -27,7 +27,7 @@ public class TrafficManager : MonoBehaviour {
 
     [Header("NPC Movement Parameters")]
     [Tooltip("Target cruise speed of the NPC cars.")]
-    public float targetSpeed = 5.5f;
+    public float targetSpeed = 3;
 
     private GameObject npcTemplate;
     private List<NPCCarController> activeNPCs = new List<NPCCarController>();

@@ -50,6 +50,13 @@ public class CarController : MonoBehaviour {
     public float driftTorqueFactor = 1.25f;
     public float driftYawForce = 2.5f;
     public float driftSteerHelper = 0.15f;
+    public float maxDriftAngle = 50f;
+    public float driftCounterSteerHelper = 0.6f;
+    public float driftMaxAngleSteerHelper = 0.45f;
+    public float driftStabilizationFactor = 0.3f;
+    public float driftCounterSteerTorqueFactor = 1.6f;
+    public float maxDriftYawVelocity = 3.5f;
+    public float driftFrictionRecoveryRate = 4.0f;
 
     [Header("Drift Boost Settings")]
     public float driftBoostLevel1Time = 0.6f;
@@ -71,6 +78,7 @@ public class CarController : MonoBehaviour {
     private float boostTimeRemaining = 0f;
     private float currentBoostMultiplier = 1f;
     private float sparkEmitTimer = 0f;
+    private float currentRearSidewaysStiffness;
 
     private ParticleSystem sparkParticleSystem;
     private ParticleSystem.EmitParams sparkEmitParams;
@@ -144,6 +152,7 @@ public class CarController : MonoBehaviour {
             originalRearRightSideways = rearRight.collider.sidewaysFriction;
             originalRearLeftForward = rearLeft.collider.forwardFriction;
             originalRearRightForward = rearRight.collider.forwardFriction;
+            currentRearSidewaysStiffness = originalRearLeftSideways.stiffness;
         }
 
         // Drift spark materials are not needed as we use the ParticleSystem with custom startColor.
@@ -320,7 +329,41 @@ public class CarController : MonoBehaviour {
 
         // Apply helper yaw torque during drift
         if (isDrifting && isGrounded) {
-            rb.AddTorque(transform.up * steering * driftYawForce, ForceMode.Acceleration);
+            Vector3 localVelForTorque = transform.InverseTransformDirection(rb.linearVelocity);
+            float lateralVelocity = localVelForTorque.x;
+            float driftAngle = 0f;
+            float speed = rb.linearVelocity.magnitude;
+            if (speed > 1f) {
+                driftAngle = Mathf.Abs(Mathf.Atan2(lateralVelocity, localVelForTorque.z) * Mathf.Rad2Deg);
+            }
+
+            bool isCounterSteering = false;
+            if (Mathf.Abs(steering) > 0.05f && Mathf.Abs(lateralVelocity) > 0.5f) {
+                isCounterSteering = (lateralVelocity > 0f && steering > 0f) || (lateralVelocity < 0f && steering < 0f);
+            }
+
+            float appliedYawForce = driftYawForce;
+            if (isCounterSteering) {
+                appliedYawForce = driftYawForce * driftCounterSteerTorqueFactor;
+            } else {
+                float angleRatio = Mathf.Clamp01(driftAngle / maxDriftAngle);
+                appliedYawForce = driftYawForce * (1f - angleRatio);
+            }
+
+            rb.AddTorque(transform.up * steering * appliedYawForce, ForceMode.Acceleration);
+
+            // Apply opposing stabilizing torque if exceeding max drift angle and not counter-steering
+            if (driftAngle > maxDriftAngle && !isCounterSteering) {
+                float excessAngle = driftAngle - maxDriftAngle;
+                float stabilizeSign = lateralVelocity > 0f ? 1f : -1f;
+                float stabilizeTorque = excessAngle * driftStabilizationFactor;
+                rb.AddTorque(transform.up * stabilizeSign * stabilizeTorque, ForceMode.Acceleration);
+            }
+
+            // Clamp max angular velocity y to prevent uncontrollable spinning
+            Vector3 angularVel = rb.angularVelocity;
+            angularVel.y = Mathf.Clamp(angularVel.y, -maxDriftYawVelocity, maxDriftYawVelocity);
+            rb.angularVelocity = angularVel;
         }
 
         // Calculate local forward speed to determine reverse gear behavior
@@ -508,25 +551,43 @@ public class CarController : MonoBehaviour {
     private void UpdateWheelFrictions(bool handbrakeActive, bool driftActive) {
         if (!rearLeft.collider || !rearRight.collider || !frontLeft.collider || !frontRight.collider) return;
 
-        if (handbrakeActive == lastHandbrakeActive && driftActive == lastDriftActive) return;
-        lastHandbrakeActive = handbrakeActive;
+        // Track last handbrake state for front wheels to avoid unnecessary curve setting
+        if (handbrakeActive != lastHandbrakeActive) {
+            lastHandbrakeActive = handbrakeActive;
+            if (handbrakeActive) {
+                SetWheelFriction(frontLeft.collider, 1f, 1f);
+                SetWheelFriction(frontRight.collider, 1f, 1f);
+            } else {
+                SetWheelFriction(frontLeft.collider, originalFrontLeftForward.stiffness, originalFrontLeftSideways.stiffness);
+                SetWheelFriction(frontRight.collider, originalFrontRightForward.stiffness, originalFrontRightSideways.stiffness);
+            }
+        }
         lastDriftActive = driftActive;
 
+        // Target values for rear wheels
+        float targetRearForward = originalRearLeftForward.stiffness;
+        float targetRearSideways = originalRearLeftSideways.stiffness;
+
         if (handbrakeActive) {
-            SetWheelFriction(frontLeft.collider, 1f, 1f);
-            SetWheelFriction(frontRight.collider, 1f, 1f);
-            SetWheelFriction(rearLeft.collider, handbrakeForwardStiffness, handbrakeSidewaysStiffness);
-            SetWheelFriction(rearRight.collider, handbrakeForwardStiffness, handbrakeSidewaysStiffness);
+            targetRearForward = handbrakeForwardStiffness;
+            targetRearSideways = handbrakeSidewaysStiffness;
         } else if (driftActive) {
-            // Front wheels keep original friction values
-            SetWheelFriction(frontLeft.collider, originalFrontLeftForward.stiffness, originalFrontLeftSideways.stiffness);
-            SetWheelFriction(frontRight.collider, originalFrontRightForward.stiffness, originalFrontRightSideways.stiffness);
-            // Rear wheels get reduced sideways stiffness but maintain forward drive/grip
-            SetWheelFriction(rearLeft.collider, originalRearLeftForward.stiffness, driftRearSidewaysStiffness);
-            SetWheelFriction(rearRight.collider, originalRearRightForward.stiffness, driftRearSidewaysStiffness);
-        } else {
-            RestoreAllFriction();
+            targetRearForward = originalRearLeftForward.stiffness;
+            targetRearSideways = driftRearSidewaysStiffness;
         }
+
+        // Determine how fast rear sideways stiffness shifts
+        float lerpSpeed = 15f; // Fast transition into drift/handbrake
+        if (!handbrakeActive && !driftActive) {
+            // Slower, smooth transition when recovering/straightening
+            lerpSpeed = driftFrictionRecoveryRate;
+        }
+
+        currentRearSidewaysStiffness = Mathf.MoveTowards(currentRearSidewaysStiffness, targetRearSideways, lerpSpeed * Time.fixedDeltaTime);
+
+        // Apply to rear wheels
+        SetWheelFriction(rearLeft.collider, targetRearForward, currentRearSidewaysStiffness);
+        SetWheelFriction(rearRight.collider, targetRearForward, currentRearSidewaysStiffness);
     }
 
     private void ApplyAntiRollBars() {
@@ -613,6 +674,14 @@ public class CarController : MonoBehaviour {
         ResetWheelState(rearLeft);
         ResetWheelState(rearRight);
 
+        RestoreAllFriction();
+        if (originalRearLeftSideways.stiffness > 0f) {
+            currentRearSidewaysStiffness = originalRearLeftSideways.stiffness;
+        }
+        lastHandbrakeActive = false;
+        lastDriftActive = false;
+        isDrifting = false;
+
         Physics.SyncTransforms();
 
         if (CameraFollow.Instance != null) {
@@ -690,7 +759,26 @@ public class CarController : MonoBehaviour {
         if (CarInputManager.Instance != null && CarInputManager.Instance.Handbrake) {
             activeSteerHelper = 0f;
         } else if (isDrifting) {
-            activeSteerHelper = driftSteerHelper;
+            Vector3 localVel = transform.InverseTransformDirection(rb.linearVelocity);
+            float lateralVelocity = localVel.x;
+            float driftAngle = 0f;
+            float speed = rb.linearVelocity.magnitude;
+            if (speed > 1f) {
+                driftAngle = Mathf.Abs(Mathf.Atan2(lateralVelocity, localVel.z) * Mathf.Rad2Deg);
+            }
+
+            float steering = CarInputManager.Instance != null ? CarInputManager.Instance.Steering : 0f;
+            bool isCounterSteering = false;
+            if (Mathf.Abs(steering) > 0.05f && Mathf.Abs(lateralVelocity) > 0.5f) {
+                isCounterSteering = (lateralVelocity > 0f && steering > 0f) || (lateralVelocity < 0f && steering < 0f);
+            }
+
+            if (isCounterSteering) {
+                activeSteerHelper = driftCounterSteerHelper;
+            } else {
+                float angleRatio = Mathf.Clamp01(driftAngle / maxDriftAngle);
+                activeSteerHelper = Mathf.Lerp(driftSteerHelper, driftMaxAngleSteerHelper, angleRatio);
+            }
         }
 
         // Correct velocity direction based on rotation change.
@@ -737,7 +825,7 @@ public class CarController : MonoBehaviour {
         }
 
         // Lower threshold for NPC collisions since same-direction driving reduces relative velocity
-        float activeThreshold = hitNPC ? 1.2f : minBounceSpeed;
+        float activeThreshold = hitNPC ? 2f : minBounceSpeed;
         if (impactSpeed < activeThreshold) return;
 
         // Check bounce cooldown

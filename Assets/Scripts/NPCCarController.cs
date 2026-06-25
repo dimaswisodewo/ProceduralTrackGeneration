@@ -21,7 +21,7 @@ public class NPCCarController : MonoBehaviour {
 
     [Header("Collider Settings")]
     [Tooltip("Scale factor for the NPC body collider to make it smaller than the visual appearance.")]
-    public float colliderScaleFactor = 0.8f;
+    public float colliderScaleFactor = 0.85f;
 
     [Header("States")]
     public bool isSpunOut = false;
