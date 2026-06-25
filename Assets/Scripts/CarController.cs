@@ -121,6 +121,15 @@ public class CarController : MonoBehaviour {
     public float squashDuration = 0.3f;
     public bool showBounceSparks = true;
 
+    [Header("Damage Visuals")]
+    public ParticleSystem firePrefab;
+    public ParticleSystem smokePrefab;
+    public Vector3 fireSmokeOffset = new Vector3(0f, 0.25f, 0.8f);
+
+    private ParticleSystem activeFireInstance;
+    private ParticleSystem activeSmokeInstance;
+    private bool isFireActive = false;
+
     private bool lastHandbrakeActive = false;
     private bool lastDriftActive = false;
 
@@ -432,6 +441,9 @@ public class CarController : MonoBehaviour {
         UpdateWheelVisual(frontRight);
         UpdateWheelVisual(rearLeft);
         UpdateWheelVisual(rearRight);
+
+        // Update damage fire/smoke effects
+        UpdateDamageEffects();
     }
 
     private void ApplyMotorTorque(float torqueInput) {
@@ -692,6 +704,9 @@ public class CarController : MonoBehaviour {
         if (PackageDeliverySystem.Instance != null) {
             PackageDeliverySystem.Instance.OnCarRespawn();
         }
+
+        // Stop and clear fire/smoke effects immediately on respawn
+        StopFireEffectsImmediate();
     }
 
     private void ResetWheelState(Wheel wheel) {
@@ -1147,6 +1162,254 @@ public class CarController : MonoBehaviour {
             if (psr != null && psr.sharedMaterial != null) {
                 Destroy(psr.sharedMaterial);
             }
+        }
+        // Clean up procedural fire/smoke materials
+        if (activeFireInstance != null && activeFireInstance.gameObject != null) {
+            var psr = activeFireInstance.GetComponent<ParticleSystemRenderer>();
+            if (psr != null && psr.sharedMaterial != null) {
+                Destroy(psr.sharedMaterial);
+            }
+        }
+        if (activeSmokeInstance != null && activeSmokeInstance.gameObject != null) {
+            var psr = activeSmokeInstance.GetComponent<ParticleSystemRenderer>();
+            if (psr != null && psr.sharedMaterial != null) {
+                Destroy(psr.sharedMaterial);
+            }
+        }
+    }
+
+    private void UpdateDamageEffects() {
+        bool shouldBurn = false;
+        if (PackageDeliverySystem.Instance != null) {
+            shouldBurn = PackageDeliverySystem.Instance.packageHealth <= 0.01f;
+        }
+
+        if (shouldBurn) {
+            if (!isFireActive) {
+                StartFireEffects();
+            }
+        } else {
+            if (isFireActive) {
+                StopFireEffects();
+            }
+        }
+    }
+
+    private void StartFireEffects() {
+        isFireActive = true;
+
+        // Fire Effect
+        if (activeFireInstance == null) {
+            if (firePrefab != null) {
+                activeFireInstance = Instantiate(firePrefab, transform);
+                activeFireInstance.transform.localPosition = fireSmokeOffset;
+                activeFireInstance.transform.localRotation = Quaternion.identity;
+            } else {
+                activeFireInstance = CreateProceduralFire();
+            }
+        }
+
+        // Smoke Effect
+        if (activeSmokeInstance == null) {
+            if (smokePrefab != null) {
+                activeSmokeInstance = Instantiate(smokePrefab, transform);
+                activeSmokeInstance.transform.localPosition = fireSmokeOffset;
+                activeSmokeInstance.transform.localRotation = Quaternion.identity;
+            } else {
+                activeSmokeInstance = CreateProceduralSmoke();
+            }
+        }
+
+        if (activeFireInstance != null && !activeFireInstance.isPlaying) {
+            activeFireInstance.Play(true);
+        }
+        if (activeSmokeInstance != null && !activeSmokeInstance.isPlaying) {
+            activeSmokeInstance.Play(true);
+        }
+    }
+
+    private void StopFireEffects() {
+        isFireActive = false;
+
+        if (activeFireInstance != null) {
+            activeFireInstance.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        }
+        if (activeSmokeInstance != null) {
+            activeSmokeInstance.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        }
+    }
+
+    private void StopFireEffectsImmediate() {
+        isFireActive = false;
+        if (activeFireInstance != null) {
+            activeFireInstance.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+        if (activeSmokeInstance != null) {
+            activeSmokeInstance.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+    }
+
+    private ParticleSystem CreateProceduralFire() {
+        GameObject go = new GameObject("ProceduralFirePS");
+        go.transform.parent = transform;
+        go.transform.localPosition = fireSmokeOffset;
+        go.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+
+        ParticleSystem ps = go.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        var main = ps.main;
+        main.duration = 1f;
+        main.loop = true;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.4f, 0.7f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.4f, 1.2f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.3f, 0.6f);
+        main.gravityModifier = -0.1f;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.playOnAwake = false;
+        main.maxParticles = 1000;
+
+        var emission = ps.emission;
+        emission.rateOverTime = 40f;
+
+        var shape = ps.shape;
+        shape.enabled = true;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.radius = 0.2f;
+        shape.angle = 15f;
+
+        var colorModule = ps.colorOverLifetime;
+        colorModule.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new GradientColorKey[] {
+                new GradientColorKey(new Color(1.0f, 0.9f, 0.2f), 0.0f),
+                new GradientColorKey(new Color(1.0f, 0.3f, 0.0f), 0.4f),
+                new GradientColorKey(new Color(0.3f, 0.0f, 0.0f), 1.0f)
+            },
+            new GradientAlphaKey[] {
+                new GradientAlphaKey(1.0f, 0.0f),
+                new GradientAlphaKey(0.8f, 0.5f),
+                new GradientAlphaKey(0.0f, 1.0f)
+            }
+        );
+        colorModule.color = new ParticleSystem.MinMaxGradient(gradient);
+
+        var sizeModule = ps.sizeOverLifetime;
+        sizeModule.enabled = true;
+        AnimationCurve sizeCurve = new AnimationCurve();
+        sizeCurve.AddKey(0f, 1.0f);
+        sizeCurve.AddKey(0.7f, 0.8f);
+        sizeCurve.AddKey(1f, 0.2f);
+        sizeModule.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+        var psr = go.GetComponent<ParticleSystemRenderer>();
+        psr.renderMode = ParticleSystemRenderMode.Billboard;
+
+        Shader shader = FindFireShader();
+        Material psMat = new Material(shader);
+        ConfigureURPMaterial(psMat, true);
+        psr.sharedMaterial = psMat;
+
+        return ps;
+    }
+
+    private ParticleSystem CreateProceduralSmoke() {
+        GameObject go = new GameObject("ProceduralSmokePS");
+        go.transform.parent = transform;
+        go.transform.localPosition = fireSmokeOffset;
+        go.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+
+        ParticleSystem ps = go.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        var main = ps.main;
+        main.duration = 1f;
+        main.loop = true;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(1.2f, 2.0f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.5f, 1.5f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+        main.gravityModifier = -0.05f;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.playOnAwake = false;
+        main.maxParticles = 1000;
+
+        var emission = ps.emission;
+        emission.rateOverTime = 25f;
+
+        var shape = ps.shape;
+        shape.enabled = true;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.radius = 0.25f;
+        shape.angle = 20f;
+
+        var colorModule = ps.colorOverLifetime;
+        colorModule.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new GradientColorKey[] {
+                new GradientColorKey(new Color(0.2f, 0.2f, 0.2f), 0.0f),
+                new GradientColorKey(new Color(0.4f, 0.4f, 0.4f), 0.5f),
+                new GradientColorKey(new Color(0.6f, 0.6f, 0.6f), 1.0f)
+            },
+            new GradientAlphaKey[] {
+                new GradientAlphaKey(0.0f, 0.0f),
+                new GradientAlphaKey(0.6f, 0.2f),
+                new GradientAlphaKey(0.3f, 0.6f),
+                new GradientAlphaKey(0.0f, 1.0f)
+            }
+        );
+        colorModule.color = new ParticleSystem.MinMaxGradient(gradient);
+
+        var sizeModule = ps.sizeOverLifetime;
+        sizeModule.enabled = true;
+        AnimationCurve sizeCurve = new AnimationCurve();
+        sizeCurve.AddKey(0f, 0.5f);
+        sizeCurve.AddKey(1f, 2.5f);
+        sizeModule.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+        var psr = go.GetComponent<ParticleSystemRenderer>();
+        psr.renderMode = ParticleSystemRenderMode.Billboard;
+
+        Shader shader = FindSmokeShader();
+        Material psMat = new Material(shader);
+        ConfigureURPMaterial(psMat, false);
+        psr.sharedMaterial = psMat;
+
+        return ps;
+    }
+
+    private Shader FindFireShader() {
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader != null) return shader;
+        shader = Shader.Find("Particles/Additive");
+        if (shader != null) return shader;
+        shader = Shader.Find("Mobile/Particles/Additive");
+        if (shader != null) return shader;
+        return FindSparkShader();
+    }
+
+    private Shader FindSmokeShader() {
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader != null) return shader;
+        shader = Shader.Find("Particles/Standard Unlit");
+        if (shader != null) return shader;
+        shader = Shader.Find("Particles/Alpha Blended");
+        if (shader != null) return shader;
+        shader = Shader.Find("Mobile/Particles/Alpha Blended");
+        if (shader != null) return shader;
+        return FindSparkShader();
+    }
+
+    private void ConfigureURPMaterial(Material mat, bool isAdditive) {
+        if (mat.HasProperty("_Surface")) {
+            mat.SetFloat("_Surface", 1f);
+            mat.SetFloat("_Blend", isAdditive ? 1f : 0f);
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", isAdditive ? (int)UnityEngine.Rendering.BlendMode.One : (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
         }
     }
 }
