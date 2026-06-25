@@ -375,9 +375,10 @@ public class TrafficManager : MonoBehaviour {
         main.startLifetime = 0.5f;
         main.startSpeed = 5f;
         main.startSize = 0.12f;
-        main.gravityModifier = 1f;
+        main.gravityModifier = 1.0f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         main.playOnAwake = false;
+        main.maxParticles = 5000;
 
         // Configure emission module
         var emission = sparkParticleSystem.emission;
@@ -387,9 +388,29 @@ public class TrafficManager : MonoBehaviour {
         var shape = sparkParticleSystem.shape;
         shape.enabled = false;
 
+        // Configure size over lifetime (fade out size)
+        var sizeModule = sparkParticleSystem.sizeOverLifetime;
+        sizeModule.enabled = true;
+        AnimationCurve sizeCurve = new AnimationCurve();
+        sizeCurve.AddKey(0f, 1f);
+        sizeCurve.AddKey(1f, 0f);
+        sizeModule.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+        // Configure color over lifetime (fade out alpha)
+        var colorModule = sparkParticleSystem.colorOverLifetime;
+        colorModule.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new GradientColorKey[] { new GradientColorKey(Color.white, 0.0f), new GradientColorKey(Color.white, 1.0f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(1.0f, 0.0f), new GradientAlphaKey(0.0f, 1.0f) }
+        );
+        colorModule.color = new ParticleSystem.MinMaxGradient(gradient);
+
         // Renderer setup
         var psr = psObj.GetComponent<ParticleSystemRenderer>();
-        psr.renderMode = ParticleSystemRenderMode.Billboard;
+        psr.renderMode = ParticleSystemRenderMode.Stretch;
+        psr.velocityScale = 0.08f;
+        psr.lengthScale = 1.3f;
 
         // Find standard spark shader and create a default material
         Shader shader = FindSparkShader();
@@ -398,11 +419,26 @@ public class TrafficManager : MonoBehaviour {
         if (psMat.HasProperty("_BaseColor")) {
             psMat.SetColor("_BaseColor", Color.white);
         }
+
+        // Setup transparency properties for URP Particle/Lit/Unlit shaders if applicable
+        if (psMat.HasProperty("_Surface")) {
+            psMat.SetFloat("_Surface", 1f); // 1 = Transparent
+            psMat.SetFloat("_Blend", 0f); // 0 = Alpha blend
+            psMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            psMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            psMat.SetInt("_ZWrite", 0);
+            psMat.DisableKeyword("_ALPHATEST_ON");
+            psMat.EnableKeyword("_ALPHABLEND_ON");
+            psMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        }
+
         psr.sharedMaterial = psMat;
     }
 
     private Shader FindSparkShader() {
-        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Particles/Lit");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
         if (shader == null) shader = Shader.Find("Mobile/Diffuse");
         if (shader == null) shader = Shader.Find("Standard");
         return shader;
@@ -420,18 +456,20 @@ public class TrafficManager : MonoBehaviour {
             new Color(1f, 0.75f, 0.5f)   // Pastel Orange
         };
 
-        int count = Mathf.Clamp(Mathf.RoundToInt(impactSpeed * 1.2f), 6, 18);
+        // Increase particle density/count for a richer burst effect
+        int count = Mathf.Clamp(Mathf.RoundToInt(impactSpeed * 3.0f), 15, 50);
         ParticleSystem.EmitParams emitParams = new ParticleSystem.EmitParams();
 
         for (int i = 0; i < count; i++) {
             Vector3 randomDir = (contactNormal + Random.insideUnitSphere * 0.5f).normalized;
-            float speed = Random.Range(1.5f, impactSpeed * 0.5f);
+            // Faster particle velocity for a more dramatic explosion
+            float speed = Random.Range(3.0f, impactSpeed * 0.8f);
             Vector3 velocity = randomDir * speed;
 
             emitParams.position = contactPoint + contactNormal * 0.05f;
             emitParams.velocity = velocity;
             emitParams.startColor = pastelColors[Random.Range(0, pastelColors.Length)];
-            emitParams.startSize = Random.Range(0.06f, 0.16f);
+            emitParams.startSize = Random.Range(0.12f, 0.32f); // Larger particles
             emitParams.startLifetime = Random.Range(0.3f, 0.65f);
 
             sparkParticleSystem.Emit(emitParams, 1);

@@ -842,9 +842,10 @@ public class CarController : MonoBehaviour {
         main.startLifetime = 0.5f;
         main.startSpeed = 5f;
         main.startSize = 0.12f;
-        main.gravityModifier = 1f;
+        main.gravityModifier = 1.0f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         main.playOnAwake = false;
+        main.maxParticles = 5000;
 
         // Configure emission module (rate over time 0, since we emit programmatically)
         var emission = sparkParticleSystem.emission;
@@ -854,9 +855,29 @@ public class CarController : MonoBehaviour {
         var shape = sparkParticleSystem.shape;
         shape.enabled = false;
 
+        // Configure size over lifetime (fade out size)
+        var sizeModule = sparkParticleSystem.sizeOverLifetime;
+        sizeModule.enabled = true;
+        AnimationCurve sizeCurve = new AnimationCurve();
+        sizeCurve.AddKey(0f, 1f);
+        sizeCurve.AddKey(1f, 0f);
+        sizeModule.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+        // Configure color over lifetime (fade out alpha)
+        var colorModule = sparkParticleSystem.colorOverLifetime;
+        colorModule.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new GradientColorKey[] { new GradientColorKey(Color.white, 0.0f), new GradientColorKey(Color.white, 1.0f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(1.0f, 0.0f), new GradientAlphaKey(0.0f, 1.0f) }
+        );
+        colorModule.color = new ParticleSystem.MinMaxGradient(gradient);
+
         // Renderer setup
         var psr = psObj.GetComponent<ParticleSystemRenderer>();
-        psr.renderMode = ParticleSystemRenderMode.Billboard;
+        psr.renderMode = ParticleSystemRenderMode.Stretch;
+        psr.velocityScale = 0.08f;
+        psr.lengthScale = 1.3f;
 
         // Find standard spark shader and create a default material
         Shader shader = FindSparkShader();
@@ -865,6 +886,19 @@ public class CarController : MonoBehaviour {
         if (psMat.HasProperty("_BaseColor")) {
             psMat.SetColor("_BaseColor", Color.white);
         }
+
+        // Setup transparency properties for URP Particle/Lit/Unlit shaders if applicable
+        if (psMat.HasProperty("_Surface")) {
+            psMat.SetFloat("_Surface", 1f); // 1 = Transparent
+            psMat.SetFloat("_Blend", 0f); // 0 = Alpha blend
+            psMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            psMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            psMat.SetInt("_ZWrite", 0);
+            psMat.DisableKeyword("_ALPHATEST_ON");
+            psMat.EnableKeyword("_ALPHABLEND_ON");
+            psMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        }
+
         psr.sharedMaterial = psMat;
     }
 
@@ -880,17 +914,19 @@ public class CarController : MonoBehaviour {
             new Color(1f, 0.75f, 0.5f)   // Pastel Orange
         };
 
-        int count = Mathf.Clamp(Mathf.RoundToInt(impactSpeed * 1.2f), 6, 18);
+        // Increase particle density/count for a richer burst effect
+        int count = Mathf.Clamp(Mathf.RoundToInt(impactSpeed * 3.0f), 15, 50);
 
         for (int i = 0; i < count; i++) {
             Vector3 randomDir = (contactNormal + Random.insideUnitSphere * 0.5f).normalized;
-            float speed = Random.Range(1.5f, impactSpeed * 0.5f);
+            // Faster particle velocity for a more dramatic explosion
+            float speed = Random.Range(3.0f, impactSpeed * 0.8f);
             Vector3 velocity = randomDir * speed;
 
             sparkEmitParams.position = contactPoint + contactNormal * 0.05f;
             sparkEmitParams.velocity = velocity;
             sparkEmitParams.startColor = pastelColors[Random.Range(0, pastelColors.Length)];
-            sparkEmitParams.startSize = Random.Range(0.06f, 0.16f);
+            sparkEmitParams.startSize = Random.Range(0.12f, 0.32f); // Larger particles
             sparkEmitParams.startLifetime = Random.Range(0.3f, 0.65f);
 
             sparkParticleSystem.Emit(sparkEmitParams, 1);
@@ -905,8 +941,11 @@ public class CarController : MonoBehaviour {
             targetColor = new Color(0.3f, 0.85f, 1f); // Level 1: Pastel Cyan/Blue
         }
 
-        EmitWheelSparkColor(rearLeft, targetColor);
-        EmitWheelSparkColor(rearRight, targetColor);
+        // Spawn a small cluster of sparks per tick for denser trail visual
+        for (int i = 0; i < 3; i++) {
+            EmitWheelSparkColor(rearLeft, targetColor);
+            EmitWheelSparkColor(rearRight, targetColor);
+        }
     }
 
     private void EmitWheelSparkColor(Wheel wheel, Color color) {
@@ -920,7 +959,7 @@ public class CarController : MonoBehaviour {
         sparkEmitParams.position = wheelBottom;
         sparkEmitParams.velocity = velocity;
         sparkEmitParams.startColor = color;
-        sparkEmitParams.startSize = Random.Range(0.08f, 0.18f);
+        sparkEmitParams.startSize = Random.Range(0.15f, 0.30f); // Slightly larger
         sparkEmitParams.startLifetime = Random.Range(0.4f, 0.7f);
 
         sparkParticleSystem.Emit(sparkEmitParams, 1);
@@ -948,6 +987,36 @@ public class CarController : MonoBehaviour {
         if (enableSquashAndStretch && carBodyVisual != null) {
             TriggerBoostStretch(duration);
         }
+
+        // Spawn a juicy boost activation spark burst
+        SpawnBoostSparks(level);
+    }
+
+    private void SpawnBoostSparks(int level) {
+        if (sparkParticleSystem == null) return;
+
+        Color boostColor = level == 2 ? new Color(1f, 0.4f, 0.4f) : new Color(0.3f, 0.85f, 1f);
+        int particleCount = level == 2 ? 40 : 20;
+
+        Vector3 leftPos = rearLeft.mesh != null ? rearLeft.mesh.position - rearLeft.mesh.up * rearLeft.collider.radius : transform.position;
+        Vector3 rightPos = rearRight.mesh != null ? rearRight.mesh.position - rearRight.mesh.up * rearRight.collider.radius : transform.position;
+
+        for (int i = 0; i < particleCount; i++) {
+            Vector3 spawnPos = (i % 2 == 0) ? leftPos : rightPos;
+
+            // Explode backwards and slightly outwards/upwards
+            Vector3 backDir = -transform.forward;
+            Vector3 randomSpread = transform.right * Random.Range(-0.8f, 0.8f) + transform.up * Random.Range(0.2f, 0.8f);
+            Vector3 velocity = (backDir * 2f + randomSpread).normalized * Random.Range(5f, 12f) + rb.linearVelocity * 0.5f;
+
+            sparkEmitParams.position = spawnPos;
+            sparkEmitParams.velocity = velocity;
+            sparkEmitParams.startColor = boostColor;
+            sparkEmitParams.startSize = Random.Range(0.18f, 0.35f);
+            sparkEmitParams.startLifetime = Random.Range(0.5f, 0.9f);
+
+            sparkParticleSystem.Emit(sparkEmitParams, 1);
+        }
     }
 
     private void TriggerBoostStretch(float duration) {
@@ -968,7 +1037,9 @@ public class CarController : MonoBehaviour {
     }
 
     private Shader FindSparkShader() {
-        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Particles/Lit");
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
         if (shader == null) shader = Shader.Find("Mobile/Diffuse");
         if (shader == null) shader = Shader.Find("Standard");
         return shader;
