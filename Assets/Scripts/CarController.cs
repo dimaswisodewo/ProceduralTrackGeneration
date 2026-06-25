@@ -411,6 +411,25 @@ public class CarController : MonoBehaviour {
 
         // Update damage fire/smoke effects
         UpdateDamageEffects();
+
+        // Update engine and drift loop SFX
+        if (SoundManager.Instance != null) {
+            float speed = rb != null ? rb.linearVelocity.magnitude : 0f;
+            float speedRatio = Mathf.Clamp01(speed / maxSpeed);
+
+            bool isGameplayActive = PackageDeliverySystem.Instance != null &&
+                (PackageDeliverySystem.Instance.currentState == PackageDeliverySystem.DeliveryState.CollectingStamps ||
+                 PackageDeliverySystem.Instance.currentState == PackageDeliverySystem.DeliveryState.HeadingToFinalDestination);
+
+            if (isGameplayActive) {
+                SoundManager.Instance.SetEngineSFXActive(true);
+                SoundManager.Instance.UpdateEngineSFX(speedRatio);
+                SoundManager.Instance.SetDriftSFXActive(isDrifting);
+            } else {
+                SoundManager.Instance.SetEngineSFXActive(false);
+                SoundManager.Instance.SetDriftSFXActive(false);
+            }
+        }
     }
 
     private void ApplyMotorTorque(float torqueInput) {
@@ -964,6 +983,10 @@ public class CarController : MonoBehaviour {
         // Notify PackageDeliverySystem to process collision damage centrally
         if (PackageDeliverySystem.Instance != null) {
             PackageDeliverySystem.Instance.ProcessCollisionDamage(impactSpeed, isNPC);
+        }
+
+        if (SoundManager.Instance != null) {
+            SoundManager.Instance.PlaySFXHitObstacle();
         }
     }
 

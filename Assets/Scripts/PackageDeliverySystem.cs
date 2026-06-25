@@ -99,6 +99,10 @@ public class PackageDeliverySystem : MonoBehaviour {
 
         // 5. Enter start state
         SetState(DeliveryState.CollectingStamps);
+
+        if (SoundManager.Instance != null) {
+            SoundManager.Instance.PlayBGMGameplay();
+        }
     }
 
     private void SetState(DeliveryState newState) {
@@ -136,10 +140,17 @@ public class PackageDeliverySystem : MonoBehaviour {
                     CameraFollow.Instance.TriggerShake(0.6f, 0.45f);
                     CameraFollow.Instance.TriggerShockZoom(0.5f, -20f);
                 }
+                if (SoundManager.Instance != null) {
+                    SoundManager.Instance.PlaySFXHealthZero();
+                    SoundManager.Instance.StopBGM();
+                }
                 break;
 
             case DeliveryState.GameOver:
                 if (pointerArrow != null) pointerArrow.SetActive(false);
+                if (SoundManager.Instance != null) {
+                    SoundManager.Instance.PlayBGMWinning();
+                }
                 break;
         }
     }
@@ -206,6 +217,10 @@ public class PackageDeliverySystem : MonoBehaviour {
             if (stampSpots.Contains(spot) && !collectedStampSpots.Contains(spot)) {
                 collectedStampSpots.Add(spot);
                 spot.SetAsTarget(false); // Disable ring (turn grey)
+
+                if (SoundManager.Instance != null) {
+                    SoundManager.Instance.PlaySFXObjectiveSuccess();
+                }
 
                 // Restore integrity to 100% on collection is disabled per request
 

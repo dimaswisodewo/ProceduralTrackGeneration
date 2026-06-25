@@ -414,14 +414,25 @@ public class VisualNovelDialogueManager : MonoBehaviour {
         int visibleCharsShown = 0;
         int visibleTranslationCharsShown = 0;
 
+        int charCounter = 0;
+        bool playedSound = false;
         while (visibleCharsShown <= totalVisibleChars || visibleTranslationCharsShown <= totalVisibleTranslationChars) {
+            playedSound = false;
             if (dialogueText != null && visibleCharsShown <= totalVisibleChars) {
                 dialogueText.text = GetParsedText(fullTextOfCurrentLine, visibleCharsShown);
                 visibleCharsShown++;
+                playedSound = true;
             }
             if (translationText != null && !string.IsNullOrEmpty(fullTranslationTextOfCurrentLine) && visibleTranslationCharsShown <= totalVisibleTranslationChars) {
                 translationText.text = GetParsedText(fullTranslationTextOfCurrentLine, visibleTranslationCharsShown);
                 visibleTranslationCharsShown++;
+                playedSound = true;
+            }
+            if (playedSound) {
+                charCounter++;
+                if (charCounter % 3 == 0 && SoundManager.Instance != null) {
+                    SoundManager.Instance.PlaySFXDialogue();
+                }
             }
             yield return new WaitForSeconds(delayBetweenChars);
         }

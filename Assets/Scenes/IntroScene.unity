@@ -119,6 +119,58 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &225538098
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 225538100}
+  - component: {fileID: 225538099}
+  m_Layer: 0
+  m_Name: SoundManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &225538099
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 225538098}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e64d3efe4ec445fc8f6872cfd0a3c63, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SoundManager
+  bgmGameplay: {fileID: 8300000, guid: 269d43ffefa664f268db94a606e66b2d, type: 3}
+  bgmWinning: {fileID: 8300000, guid: f012d61066c8c4d28accdd2c69ac9135, type: 3}
+  sfxHitObstacle: {fileID: 8300000, guid: 0bb57dc16b481427d93dcfac7259f661, type: 3}
+  sfxObjectiveSuccess: {fileID: 8300000, guid: 630a7ece5563d4c5c803c7cfe066d098, type: 3}
+  sfxHealthZero: {fileID: 8300000, guid: 835a8397ba0b842dc87728de024cef6e, type: 3}
+  sfxDrifting: {fileID: 0}
+  sfxCarEngine: {fileID: 0}
+  sfxDialogue: {fileID: 8300000, guid: 6659cf81db75a456a814e7ab0520a485, type: 3}
+--- !u!4 &225538100
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 225538098}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &354990351
 GameObject:
   m_ObjectHideFlags: 0
@@ -1207,3 +1259,4 @@ SceneRoots:
   - {fileID: 429932473}
   - {fileID: 1395344545}
   - {fileID: 354990353}
+  - {fileID: 225538100}
