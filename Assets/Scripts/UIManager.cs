@@ -18,9 +18,11 @@ public class UIManager : MonoBehaviour {
         }
     }
 
-    [Header("UI Customization GameObjects")]
     [Tooltip("Text GameObject flashed when taking collision damage")]
     [SerializeField] private GameObject damageTextObject;
+    
+    [Tooltip("Text GameObject flashed when objective is completed successfully")]
+    [SerializeField] private GameObject successTextObject;
     
     [Tooltip("Text GameObject showing current gameplay objectives")]
     [SerializeField] private GameObject objectivesTextObject;
@@ -40,6 +42,7 @@ public class UIManager : MonoBehaviour {
 
     // Resolved text components
     private Text damageText;
+    private Text successText;
     private Text objectivesText;
     private Text gameOverText;
     private Text victoryText;
@@ -52,6 +55,8 @@ public class UIManager : MonoBehaviour {
 
     private Tween damageTextTween;
     private Tween damageTextScaleTween;
+    private Tween successTextTween;
+    private Tween successTextScaleTween;
     private Tween objectiveTween;
     private Tween objectiveScaleTween;
 
@@ -80,7 +85,7 @@ public class UIManager : MonoBehaviour {
             healthBarFillImage = healthSlider.fillRect != null ? healthSlider.fillRect.GetComponent<Image>() : null;
             healthBarText = healthSlider.GetComponentInChildren<Text>();
             if (healthBarText != null) {
-                healthBarText.text = "Document Integrity: 100%";
+                healthBarText.text = "Evidence Integrity: 100%";
             }
         }
 
@@ -94,6 +99,7 @@ public class UIManager : MonoBehaviour {
 
         // 3. Reset states for new run
         if (damageTextObject != null) damageTextObject.SetActive(false);
+        if (successTextObject != null) successTextObject.SetActive(false);
         if (gameOverTextObject != null) gameOverTextObject.SetActive(false);
         if (victoryTextObject != null) victoryTextObject.SetActive(false);
         if (objectivesTextObject != null) objectivesTextObject.SetActive(true);
@@ -107,11 +113,24 @@ public class UIManager : MonoBehaviour {
             damageText = damageTextObject.GetComponent<Text>();
         }
         if (damageText == null) {
-            damageText = GetOrCreateUIText("PackageWarningText", new Vector2(0f, -110f), new Vector2(650f, 45f), 22, new Color(1f, 0.2f, 0.2f), TextAnchor.MiddleCenter);
+            damageText = GetOrCreateUIText("PackageWarningText", new Vector2(0f, -110f), new Vector2(800f, 50f), 22, new Color(1f, 0.2f, 0.2f), TextAnchor.MiddleCenter);
             if (damageText != null) {
                 damageText.fontStyle = FontStyle.Bold;
                 damageTextObject = damageText.gameObject;
                 damageTextObject.SetActive(false);
+            }
+        }
+
+        // Resolve Success Text
+        if (successTextObject != null) {
+            successText = successTextObject.GetComponent<Text>();
+        }
+        if (successText == null) {
+            successText = GetOrCreateUIText("PackageSuccessText", new Vector2(0f, -160f), new Vector2(800f, 50f), 22, new Color(0.45f, 0.85f, 0.55f), TextAnchor.MiddleCenter);
+            if (successText != null) {
+                successText.fontStyle = FontStyle.Bold;
+                successTextObject = successText.gameObject;
+                successTextObject.SetActive(false);
             }
         }
 
@@ -120,7 +139,7 @@ public class UIManager : MonoBehaviour {
             objectivesText = objectivesTextObject.GetComponent<Text>();
         }
         if (objectivesText == null) {
-            objectivesText = GetOrCreateUIText("PackageStatusText", new Vector2(0f, -60f), new Vector2(650f, 40f), 18, Color.white, TextAnchor.MiddleCenter);
+            objectivesText = GetOrCreateUIText("PackageStatusText", new Vector2(0f, -60f), new Vector2(850f, 50f), 18, Color.white, TextAnchor.MiddleCenter);
             if (objectivesText != null) {
                 objectivesTextObject = objectivesText.gameObject;
             }
@@ -134,7 +153,7 @@ public class UIManager : MonoBehaviour {
             }
         }
         if (scoreText == null) {
-            scoreText = GetOrCreateUIText("PackageScoreText", new Vector2(-20f, -20f), new Vector2(250f, 40f), 20, Color.yellow, TextAnchor.MiddleRight);
+            scoreText = GetOrCreateUIText("PackageScoreText", new Vector2(-20f, -20f), new Vector2(450f, 40f), 20, Color.yellow, TextAnchor.MiddleRight);
             if (scoreText != null) {
                 RectTransform rect = scoreText.GetComponent<RectTransform>();
                 rect.anchorMin = new Vector2(1f, 1f);
@@ -156,7 +175,7 @@ public class UIManager : MonoBehaviour {
 
         // Resolve Reposition Help Text
         if (repositionHelpText == null) {
-            repositionHelpText = GetOrCreateUIText("RepositionHelpText", new Vector2(-25f, 25f), new Vector2(400f, 30f), 13, new Color(0.75f, 0.75f, 0.75f, 0.7f), TextAnchor.LowerRight);
+            repositionHelpText = GetOrCreateUIText("RepositionHelpText", new Vector2(-25f, 25f), new Vector2(500f, 30f), 13, new Color(0.75f, 0.75f, 0.75f, 0.7f), TextAnchor.LowerRight);
             if (repositionHelpText != null) {
                 RectTransform rect = repositionHelpText.GetComponent<RectTransform>();
                 rect.anchorMin = new Vector2(1f, 0f);
@@ -189,56 +208,59 @@ public class UIManager : MonoBehaviour {
             case PackageDeliverySystem.DeliveryState.CollectingStamps:
             case PackageDeliverySystem.DeliveryState.HeadingToFinalDestination:
                 if (damageTextObject != null) damageTextObject.SetActive(false);
+                if (successTextObject != null) successTextObject.SetActive(false);
                 if (gameOverTextObject != null) gameOverTextObject.SetActive(false);
                 if (victoryTextObject != null) victoryTextObject.SetActive(false);
                 if (objectivesTextObject != null) objectivesTextObject.SetActive(true);
                 break;
-
+ 
             case PackageDeliverySystem.DeliveryState.Broken:
                 // Show game over / ruined screen
                 if (gameOverTextObject != null) {
                     gameOverTextObject.SetActive(true);
                     if (gameOverText != null) {
-                        gameOverText.text = "DOCUMENTS RUINED! Press R to Restart";
+                        gameOverText.text = "EVIDENCE RUINED! You'll rot in a cell! Press R to Restart";
                     }
                     gameOverTextObject.transform.DOComplete();
                     gameOverTextObject.transform.localScale = Vector3.zero;
                     gameOverTextObject.transform.DOScale(1f, 0.5f).SetEase(Ease.OutElastic);
-
+ 
                     if (objectivesTextObject != null) objectivesTextObject.SetActive(false);
                     if (damageTextObject != null) damageTextObject.SetActive(false);
+                    if (successTextObject != null) successTextObject.SetActive(false);
                     if (victoryTextObject != null) victoryTextObject.SetActive(false);
                 } else {
                     // Fallback to warningText + statusText
                     if (damageTextObject != null) {
                         damageTextObject.SetActive(true);
                         if (damageText != null) {
-                            damageText.text = "DOCUMENTS RUINED! Press R to Restart the game.";
+                            damageText.text = "EVIDENCE RUINED! You'll rot in a cell! Press R to Restart the game.";
                         }
                     }
                     if (objectivesTextObject != null) {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
-                            objectivesText.text = "DOCUMENTS RUINED! Press R to Restart the game.";
+                            objectivesText.text = "EVIDENCE RUINED! You'll rot in a cell! Press R to Restart the game.";
                             objectivesText.color = new Color(0.95f, 0.45f, 0.45f); // Pastel coral
                         }
                     }
                 }
                 break;
-
+ 
             case PackageDeliverySystem.DeliveryState.GameOver:
                 // Show victory screen
                 if (victoryTextObject != null) {
                     victoryTextObject.SetActive(true);
                     if (victoryText != null) {
-                        victoryText.text = "VICTORY! All stamps collected and delivered! Press R to restart.";
+                        victoryText.text = "TRIAL WON! The evidence is legally bulletproof! Press R to restart.";
                     }
                     victoryTextObject.transform.DOComplete();
                     victoryTextObject.transform.localScale = Vector3.zero;
                     victoryTextObject.transform.DOScale(1f, 0.7f).SetEase(Ease.OutElastic);
-
+ 
                     if (objectivesTextObject != null) objectivesTextObject.SetActive(false);
                     if (damageTextObject != null) damageTextObject.SetActive(false);
+                    if (successTextObject != null) successTextObject.SetActive(false);
                     if (gameOverTextObject != null) gameOverTextObject.SetActive(false);
                 } else {
                     // Fallback to statusText
@@ -246,7 +268,7 @@ public class UIManager : MonoBehaviour {
                     if (objectivesTextObject != null) {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
-                            objectivesText.text = "VICTORY! All stamps collected and delivered! Press R to restart.";
+                            objectivesText.text = "TRIAL WON! The evidence is legally bulletproof! Press R to restart.";
                             objectivesText.color = new Color(0.45f, 0.85f, 0.55f); // Soft pastel green
                         }
                     }
@@ -278,13 +300,13 @@ public class UIManager : MonoBehaviour {
 
         // Dynamically update the Text label to show the correct health percentage
         if (healthBarText != null) {
-            healthBarText.text = $"Document Integrity: {currentHealth:F0}%";
+            healthBarText.text = $"Evidence Integrity: {currentHealth:F0}%";
         }
     }
 
     public void UpdateScore(int collected, int total) {
         if (scoreText != null) {
-            scoreText.text = $"STAMPS: {collected} / {total}";
+            scoreText.text = $"VALIDATED EVIDENCE: {collected} / {total}";
             scoreText.transform.DOComplete();
             scoreText.transform.localScale = Vector3.one;
             scoreText.transform.DOPunchScale(new Vector3(0.25f, 0.25f, 0.25f), 0.35f, 10, 0.5f);
@@ -337,24 +359,40 @@ public class UIManager : MonoBehaviour {
     }
 
     public void FlashObjectiveSuccessText(string msg, string nextObjectiveText, Color nextObjectiveColor) {
-        if (objectivesTextObject == null || objectivesText == null) return;
+        // 1. Immediately update the main objective text
+        if (objectivesTextObject != null && objectivesText != null) {
+            objectivesText.text = nextObjectiveText;
+            objectivesText.color = nextObjectiveColor;
+            
+            // Subtle pop animation for the new objective
+            objectivesTextObject.transform.DOComplete();
+            objectivesTextObject.transform.localScale = Vector3.one;
+            objectivesTextObject.transform.DOPunchScale(new Vector3(0.1f, 0.1f, 0.1f), 0.3f);
+        }
 
-        if (objectiveTween != null) objectiveTween.Kill();
-        if (objectiveScaleTween != null) objectiveScaleTween.Kill();
+        // 2. Flash the success message on the dedicated success text
+        if (successTextObject == null || successText == null) return;
 
-        objectivesText.text = msg;
-        objectivesText.color = new Color(0.45f, 0.85f, 0.55f); // Soft pastel green
+        if (successTextTween != null) successTextTween.Kill();
+        if (successTextScaleTween != null) successTextScaleTween.Kill();
 
-        objectivesTextObject.transform.localScale = Vector3.one;
-        objectiveScaleTween = objectivesTextObject.transform.DOPunchScale(new Vector3(0.2f, 0.2f, 0.2f), 0.4f, 8, 0.5f)
+        successText.text = msg;
+        successTextObject.SetActive(true);
+
+        Color c = successText.color;
+        c.a = 1f;
+        successText.color = c;
+        successTextObject.transform.localScale = Vector3.zero;
+
+        successTextScaleTween = successTextObject.transform.DOScale(1.2f, 0.2f)
+            .SetEase(Ease.OutBack)
             .OnComplete(() => {
-                objectiveTween = DOTween.Sequence()
-                    .AppendInterval(1.6f)
-                    .Append(objectivesText.DOColor(nextObjectiveColor, 0.3f))
-                    .OnStart(() => {
-                        objectivesText.text = nextObjectiveText;
-                        objectivesTextObject.transform.localScale = Vector3.one;
-                        objectivesTextObject.transform.DOPunchScale(new Vector3(0.1f, 0.1f, 0.1f), 0.3f);
+                successTextObject.transform.DOScale(1.0f, 0.15f)
+                    .SetDelay(3.5f)
+                    .OnComplete(() => {
+                        successTextTween = successText.DOFade(0f, 0.4f);
+                        successTextScaleTween = successTextObject.transform.DOScale(0.8f, 0.4f)
+                            .OnComplete(() => successTextObject.SetActive(false));
                     });
             });
     }
@@ -391,6 +429,8 @@ public class UIManager : MonoBehaviour {
         text.fontSize = fontSize;
         text.color = color;
         text.alignment = alignment;
+        text.horizontalOverflow = HorizontalWrapMode.Overflow;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
 
         Shadow shadow = go.AddComponent<Shadow>();
         if (shadow != null) {
@@ -444,6 +484,8 @@ public class UIManager : MonoBehaviour {
         if (objectiveScaleTween != null) objectiveScaleTween.Kill();
         if (gameOverTextObject != null) gameOverTextObject.transform.DOKill();
         if (victoryTextObject != null) victoryTextObject.transform.DOKill();
+        if (successTextTween != null) successTextTween.Kill();
+        if (successTextScaleTween != null) successTextScaleTween.Kill();
         if (generationPanel != null) {
             Image img = generationPanel.GetComponent<Image>();
             if (img != null) img.DOKill();
