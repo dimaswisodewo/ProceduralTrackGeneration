@@ -58,25 +58,10 @@ public class CarController : MonoBehaviour {
     public float maxDriftYawVelocity = 3.5f;
     public float driftFrictionRecoveryRate = 4.0f;
 
-    [Header("Drift Boost Settings")]
-    public float driftBoostLevel1Time = 0.6f;
-    public float driftBoostLevel2Time = 1.3f;
-    public float driftBoostLevel1Force = 7f;
-    public float driftBoostLevel2Force = 13f;
-    public float driftBoostLevel1Duration = 0.5f;
-    public float driftBoostLevel2Duration = 1.0f;
-    public float driftBoostLevel1SpeedMult = 1.25f;
-    public float driftBoostLevel2SpeedMult = 1.45f;
-    public float driftBoostLevel1FOVOffset = 14f;
-    public float driftBoostLevel2FOVOffset = 24f;
-
     [Header("Drift Visuals")]
     public float sparkEmitInterval = 0.06f;
 
     private bool isDrifting = false;
-    private float driftChargeTime = 0f;
-    private float boostTimeRemaining = 0f;
-    private float currentBoostMultiplier = 1f;
     private float sparkEmitTimer = 0f;
     private float currentRearSidewaysStiffness;
 
@@ -306,10 +291,8 @@ public class CarController : MonoBehaviour {
             }
         }
 
-        // Drift boost charging
+        // Drift sparks
         if (isDrifting) {
-            driftChargeTime += Time.fixedDeltaTime;
-            
             // Spawn drift sparks at interval
             sparkEmitTimer += Time.fixedDeltaTime;
             if (sparkEmitTimer >= sparkEmitInterval) {
@@ -317,24 +300,7 @@ public class CarController : MonoBehaviour {
                 EmitDriftSparks();
             }
         } else {
-            if (driftChargeTime > 0f) {
-                // Exit drift: Trigger boost if charged enough
-                if (driftChargeTime >= driftBoostLevel2Time) {
-                    TriggerDriftBoost(2);
-                } else if (driftChargeTime >= driftBoostLevel1Time) {
-                    TriggerDriftBoost(1);
-                }
-                driftChargeTime = 0f;
-            }
             sparkEmitTimer = 0f;
-        }
-
-        // Drift boost duration countdown
-        if (boostTimeRemaining > 0f) {
-            boostTimeRemaining -= Time.fixedDeltaTime;
-            if (boostTimeRemaining <= 0f) {
-                currentBoostMultiplier = 1f;
-            }
         }
 
         // Apply helper yaw torque during drift
@@ -455,7 +421,7 @@ public class CarController : MonoBehaviour {
         float currentSpeed = Mathf.Abs(forwardSpeed);
 
         // We limit reverse speed to 40% of max forward speed
-        float speedLimit = torqueInput < 0f ? (maxSpeed * 0.4f) : maxSpeed * currentBoostMultiplier;
+        float speedLimit = torqueInput < 0f ? (maxSpeed * 0.4f) : maxSpeed;
 
         // Torque decreases to 0 as speed approaches speedLimit
         float speedRatio = currentSpeed / speedLimit;
@@ -967,12 +933,7 @@ public class CarController : MonoBehaviour {
     }
 
     private void EmitDriftSparks() {
-        Color targetColor = new Color(0.9f, 0.65f, 1f); // Level 0: Pastel Purple
-        if (driftChargeTime >= driftBoostLevel2Time) {
-            targetColor = new Color(1f, 0.4f, 0.4f); // Level 2: Pastel Pink/Red
-        } else if (driftChargeTime >= driftBoostLevel1Time) {
-            targetColor = new Color(0.3f, 0.85f, 1f); // Level 1: Pastel Cyan/Blue
-        }
+        Color targetColor = new Color(0.9f, 0.65f, 1f); // Pastel Purple
 
         // Spawn a small cluster of sparks per tick for denser trail visual
         for (int i = 0; i < 3; i++) {
@@ -998,76 +959,7 @@ public class CarController : MonoBehaviour {
         sparkParticleSystem.Emit(sparkEmitParams, 1);
     }
 
-    private void TriggerDriftBoost(int level) {
-        float boostForce = level == 2 ? driftBoostLevel2Force : driftBoostLevel1Force;
-        float duration = level == 2 ? driftBoostLevel2Duration : driftBoostLevel1Duration;
-        float speedMult = level == 2 ? driftBoostLevel2SpeedMult : driftBoostLevel1SpeedMult;
 
-        boostTimeRemaining = duration;
-        currentBoostMultiplier = speedMult;
-
-        // Apply velocity impulse forward
-        rb.AddForce(transform.forward * boostForce, ForceMode.VelocityChange);
-
-        // Screen shake & Boost FOV
-        if (CameraFollow.Instance != null) {
-            CameraFollow.Instance.TriggerShake(0.25f, level == 2 ? 0.22f : 0.13f);
-            float fovOffset = level == 2 ? driftBoostLevel2FOVOffset : driftBoostLevel1FOVOffset;
-            CameraFollow.Instance.TriggerBoostFOV(duration, fovOffset);
-        }
-
-        // Squash & Stretch speed effect
-        if (enableSquashAndStretch && carBodyVisual != null) {
-            TriggerBoostStretch(duration);
-        }
-
-        // Spawn a juicy boost activation spark burst
-        SpawnBoostSparks(level);
-    }
-
-    private void SpawnBoostSparks(int level) {
-        if (sparkParticleSystem == null) return;
-
-        Color boostColor = level == 2 ? new Color(1f, 0.4f, 0.4f) : new Color(0.3f, 0.85f, 1f);
-        int particleCount = level == 2 ? 40 : 20;
-
-        Vector3 leftPos = rearLeft.mesh != null ? rearLeft.mesh.position - rearLeft.mesh.up * rearLeft.collider.radius : transform.position;
-        Vector3 rightPos = rearRight.mesh != null ? rearRight.mesh.position - rearRight.mesh.up * rearRight.collider.radius : transform.position;
-
-        for (int i = 0; i < particleCount; i++) {
-            Vector3 spawnPos = (i % 2 == 0) ? leftPos : rightPos;
-
-            // Explode backwards and slightly outwards/upwards
-            Vector3 backDir = -transform.forward;
-            Vector3 randomSpread = transform.right * Random.Range(-0.8f, 0.8f) + transform.up * Random.Range(0.2f, 0.8f);
-            Vector3 velocity = (backDir * 2f + randomSpread).normalized * Random.Range(5f, 12f) + rb.linearVelocity * 0.5f;
-
-            sparkEmitParams.position = spawnPos;
-            sparkEmitParams.velocity = velocity;
-            sparkEmitParams.startColor = boostColor;
-            sparkEmitParams.startSize = Random.Range(0.18f, 0.35f);
-            sparkEmitParams.startLifetime = Random.Range(0.5f, 0.9f);
-
-            sparkParticleSystem.Emit(sparkEmitParams, 1);
-        }
-    }
-
-    private void TriggerBoostStretch(float duration) {
-        if (carBodyVisual == null) return;
-
-        carBodyVisual.DOKill();
-        carBodyVisual.localScale = originalBodyScale;
-
-        Vector3 stretchScale = originalBodyScale;
-        stretchScale.z *= 1.25f; // Stretch forward
-        stretchScale.x *= 0.85f; // Narrow sides
-        stretchScale.y *= 0.85f; // Flat top
-
-        Sequence seq = DOTween.Sequence();
-        seq.Append(carBodyVisual.DOScale(stretchScale, duration * 0.2f).SetEase(Ease.OutQuad));
-        seq.Append(carBodyVisual.DOScale(originalBodyScale, duration * 0.8f).SetEase(Ease.InOutQuad));
-        seq.SetTarget(carBodyVisual);
-    }
 
 
 
