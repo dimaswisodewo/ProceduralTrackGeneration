@@ -260,6 +260,31 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     /// </summary>
     private void InitializeDialogueContainer() {
         if (dialogueContainer != null) {
+            // Check if the assigned dialogueContainer is actually the Canvas itself.
+            // If so, redirect it to the inner dialogue panel (e.g. named "Panel") to avoid deactivating the entire Canvas.
+            Canvas canvas = dialogueContainer.GetComponent<Canvas>();
+            if (canvas != null) {
+                Transform actualDialoguePanel = null;
+                if (dialogueText != null) {
+                    Transform current = dialogueText.transform;
+                    while (current != null && current.parent != canvas.transform && current.parent != null) {
+                        current = current.parent;
+                    }
+                    if (current != null && current.parent == canvas.transform) {
+                        actualDialoguePanel = current;
+                    }
+                }
+
+                if (actualDialoguePanel == null) {
+                    actualDialoguePanel = canvas.transform.Find("Panel");
+                }
+
+                if (actualDialoguePanel != null) {
+                    Debug.Log($"VisualNovelDialogueManager: dialogueContainer was assigned to Canvas. Redirecting to child panel: '{actualDialoguePanel.name}' to keep Canvas active.");
+                    dialogueContainer = actualDialoguePanel.gameObject;
+                }
+            }
+
             containerCanvasGroup = dialogueContainer.GetComponent<CanvasGroup>();
             if (containerCanvasGroup == null) {
                 containerCanvasGroup = dialogueContainer.AddComponent<CanvasGroup>();

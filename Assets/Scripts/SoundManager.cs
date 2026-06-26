@@ -97,6 +97,47 @@ public class SoundManager : MonoBehaviour {
         bgmCrossfadeCoroutine = StartCoroutine(CrossfadeBGM(null));
     }
 
+    /// <summary>
+    /// Pauses the currently playing BGM.
+    /// </summary>
+    public void PauseBGM() {
+        if (bgmSource != null && bgmSource.isPlaying) {
+            bgmSource.Pause();
+        }
+    }
+
+    /// <summary>
+    /// Resumes the paused BGM.
+    /// </summary>
+    public void ResumeBGM() {
+        if (bgmSource != null && !bgmSource.isPlaying && bgmSource.clip != null) {
+            bgmSource.UnPause();
+        }
+    }
+
+    /// <summary>
+    /// Fades the currently playing BGM out and then pauses it.
+    /// </summary>
+    public void FadeAndPauseBGM(float duration = 0.5f) {
+        if (bgmCrossfadeCoroutine != null) {
+            StopCoroutine(bgmCrossfadeCoroutine);
+        }
+        bgmCrossfadeCoroutine = StartCoroutine(FadeAndPauseBGMCoroutine(duration));
+    }
+
+    private IEnumerator FadeAndPauseBGMCoroutine(float duration) {
+        float elapsed = 0f;
+        if (bgmSource != null && bgmSource.isPlaying) {
+            float startVol = bgmSource.volume;
+            while (elapsed < duration) {
+                elapsed += Time.deltaTime;
+                bgmSource.volume = Mathf.Lerp(startVol, 0f, elapsed / duration);
+                yield return null;
+            }
+            bgmSource.Pause();
+        }
+    }
+
     private void PlayBGM(AudioClip clip) {
         if (clip == null) return;
         if (bgmSource != null && bgmSource.clip == clip && bgmSource.isPlaying) return;
@@ -158,6 +199,15 @@ public class SoundManager : MonoBehaviour {
     public void PlaySFXDialogue(float volumeScale = 0.15f) {
         if (sfxDialogue != null && dialogueSource != null) {
             dialogueSource.PlayOneShot(sfxDialogue, volumeScale);
+        }
+    }
+
+    /// <summary>
+    /// Plays the standard UI Click SFX (using dialogue click clip).
+    /// </summary>
+    public void PlaySFXClick(float volumeScale = 0.5f) {
+        if (sfxDialogue != null && sfxSource != null) {
+            sfxSource.PlayOneShot(sfxDialogue, volumeScale);
         }
     }
 

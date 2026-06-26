@@ -1211,7 +1211,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b06ba18d510246e68648d176c2c918e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapGenerator
-  numberOfNodes: 60
+  numberOfNodes: 80
   numberOfSpots: 11
   mapSize: {x: 400, y: 400}
   cellSize: 4
@@ -1378,6 +1378,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIManager
   damageTextObject: {fileID: 0}
+  successTextObject: {fileID: 0}
   objectivesTextObject: {fileID: 0}
   gameOverTextObject: {fileID: 0}
   victoryTextObject: {fileID: 0}

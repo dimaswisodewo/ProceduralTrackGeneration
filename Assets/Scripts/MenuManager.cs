@@ -39,13 +39,25 @@ public class MenuManager : MonoBehaviour {
     [Tooltip("The canvas to parent the dynamically created attribution panel under.")]
     [SerializeField] private Canvas targetCanvas;
 
+    [Header("Menu Title UI")]
+    [SerializeField] private GameObject titleTextParent;
+    [SerializeField] private Text description;
+    [SerializeField] private Text pressSpaceToProceed;
+    [SerializeField] private GameObject titlePanel;
+
     private bool isShowingAttribution = false;
+    private bool isShowingTitleScreen = false;
     private Coroutine autoDismissCoroutine;
 
     private void Start() {
         // Automatically resolve the SceneLoader instance if not assigned
         if (sceneLoader == null) {
             sceneLoader = SceneLoader.Instance;
+        }
+
+        // Hide title panel initially to avoid overlaying attribution
+        if (titlePanel != null) {
+            titlePanel.SetActive(false);
         }
 
         // Start by displaying the attribution text first
@@ -55,7 +67,17 @@ public class MenuManager : MonoBehaviour {
     private void Update() {
         if (isShowingAttribution) {
             if (GetAdvanceInputPressed()) {
+                if (SoundManager.Instance != null) {
+                    SoundManager.Instance.PlaySFXClick();
+                }
                 DismissAttribution();
+            }
+        } else if (isShowingTitleScreen) {
+            if (GetAdvanceInputPressed()) {
+                if (SoundManager.Instance != null) {
+                    SoundManager.Instance.PlaySFXClick();
+                }
+                ProceedFromTitleScreen();
             }
         }
     }
@@ -79,6 +101,14 @@ public class MenuManager : MonoBehaviour {
         // If the user already assigned a panel in the inspector, use it
         if (attributionPanel != null) {
             attributionPanel.SetActive(true);
+            CanvasGroup panelCg = attributionPanel.GetComponent<CanvasGroup>();
+            if (panelCg == null) {
+                panelCg = attributionPanel.AddComponent<CanvasGroup>();
+            }
+            panelCg.alpha = 0f;
+            panelCg.DOComplete();
+            panelCg.DOFade(1f, 0.5f).SetUpdate(true);
+
             if (attributionText != null) {
                 attributionText.text = "Music from #Uppbeat (free for Creators!):\n\n" +
                                        "https://uppbeat.io/t/kevin-macleod/blockman\n" +
@@ -120,9 +150,11 @@ public class MenuManager : MonoBehaviour {
         Image img = panelGo.AddComponent<Image>();
         img.color = new Color(0.08f, 0.08f, 0.08f, 0.95f); // Elegant very dark grey / almost black overlay
 
-        // Add CanvasGroup for smooth fade-out
+        // Add CanvasGroup for smooth fade-in and fade-out
         CanvasGroup cg = panelGo.AddComponent<CanvasGroup>();
-        cg.alpha = 1f;
+        cg.alpha = 0f;
+        cg.DOComplete();
+        cg.DOFade(1f, 0.5f).SetUpdate(true);
 
         // Create Text GameObject
         GameObject textGo = new GameObject("AttributionText");
@@ -182,15 +214,80 @@ public class MenuManager : MonoBehaviour {
                     if (targetCanvas != null && targetCanvas.name == "AttributionCanvas") {
                         Destroy(targetCanvas.gameObject);
                     }
-                    StartCoroutine(StartDialogueAfterDelay(delayBeforeDialogue));
+                    ShowTitleScreen();
                 });
             } else {
                 attributionPanel.SetActive(false);
                 if (targetCanvas != null && targetCanvas.name == "AttributionCanvas") {
                     Destroy(targetCanvas.gameObject);
                 }
-                StartCoroutine(StartDialogueAfterDelay(delayBeforeDialogue));
+                ShowTitleScreen();
             }
+        } else {
+            ShowTitleScreen();
+        }
+    }
+
+    /// <summary>
+    /// Displays the title screen UI and plays the background music.
+    /// </summary>
+    private void ShowTitleScreen() {
+        if (titlePanel != null) {
+            titlePanel.SetActive(true);
+            CanvasGroup cg = titlePanel.GetComponent<CanvasGroup>();
+            if (cg == null) {
+                cg = titlePanel.AddComponent<CanvasGroup>();
+            }
+            cg.alpha = 0f;
+            cg.DOComplete();
+            cg.DOFade(1f, 0.5f).SetUpdate(true);
+        }
+
+        if (titleTextParent != null) {
+            titleTextParent.transform.DOKill(true);
+            titleTextParent.transform.localScale = Vector3.zero;
+            titleTextParent.transform.DOScale(Vector3.one, 0.5f).SetEase(Ease.OutBack).SetUpdate(true);
+        }
+
+        if (pressSpaceToProceed != null) {
+            pressSpaceToProceed.transform.DOKill(true);
+            pressSpaceToProceed.transform.DOScale(1.1f, 0.8f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine).SetUpdate(true);
+        }
+
+        // Start BGM
+        if (SoundManager.Instance != null) {
+            SoundManager.Instance.PlayBGMGameplay();
+        }
+
+        isShowingTitleScreen = true;
+    }
+
+    /// <summary>
+    /// Handles transitioning from title screen to dialogue, pausing the BGM.
+    /// </summary>
+    private void ProceedFromTitleScreen() {
+        isShowingTitleScreen = false;
+
+        if (pressSpaceToProceed != null) {
+            pressSpaceToProceed.transform.DOKill();
+            pressSpaceToProceed.transform.localScale = Vector3.one;
+        }
+
+        // Smoothly fade out and pause BGM as requested
+        if (SoundManager.Instance != null) {
+            SoundManager.Instance.FadeAndPauseBGM(0.5f);
+        }
+
+        if (titlePanel != null) {
+            CanvasGroup cg = titlePanel.GetComponent<CanvasGroup>();
+            if (cg == null) {
+                cg = titlePanel.AddComponent<CanvasGroup>();
+            }
+            cg.DOComplete();
+            cg.DOFade(0f, 0.5f).SetUpdate(true).OnComplete(() => {
+                titlePanel.SetActive(false);
+                StartCoroutine(StartDialogueAfterDelay(delayBeforeDialogue));
+            });
         } else {
             StartCoroutine(StartDialogueAfterDelay(delayBeforeDialogue));
         }
