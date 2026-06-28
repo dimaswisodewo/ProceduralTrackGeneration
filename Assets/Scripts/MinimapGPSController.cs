@@ -8,8 +8,8 @@ public class MinimapGPSController : MonoBehaviour {
     public float minimapOrthoSize = 40f;
     public float gpsUpdateInterval = 0.15f;
     public float pathHeightOffset = 0.22f;
-    public float lineWidth = 0.45f;
-    public Color gpsPathColor = new Color(0.75f, 0.55f, 0.95f, 0.8f); // Soft Pastel Purple
+    public float lineWidth = 0.9f;
+    public Color gpsPathColor = new Color(0.75f, 0.35f, 1.0f, 0.95f); // Vibrant Neon Pastel Purple
     public Color pickupIconColor = new Color(0.5f, 0.75f, 0.95f, 1f); // Soft Pastel Blue
     public Color deliveryIconColor = new Color(0.95f, 0.65f, 0.45f, 1f); // Soft Pastel Orange/Peach
 

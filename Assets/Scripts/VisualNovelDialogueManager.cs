@@ -162,6 +162,21 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     [Tooltip("If true, dialogue can be advanced using Space or Mouse Left Click.")]
     [SerializeField] private bool advanceOnKeyInput = true;
 
+    [Header("Indicator Settings")]
+    [Tooltip("UI Text component to display the proceed/skip indicator prompt. Optional.")]
+    [SerializeField] private Text proceedIndicatorText;
+
+    [Tooltip("A custom format string for the proceed and skip indicator.")]
+    [TextArea(2, 5)]
+    [SerializeField] private string indicatorFormat = "Space / Click to proceed\nHold Ctrl to skip";
+
+    [Header("Skip Settings")]
+    [Tooltip("If true, dialogue can be skipped/fast-forwarded by holding Control.")]
+    [SerializeField] private bool allowSkipInput = true;
+
+    [Tooltip("Delay in seconds between advances when holding the skip key.")]
+    [SerializeField] private float skipDelay = 0.05f;
+
     [Header("Transitions & Tweening")]
     [Tooltip("Transition duration to fade the dialogue container in/out.")]
     [SerializeField] private float containerFadeDuration = 0.3f;
@@ -184,6 +199,7 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     private Coroutine typingCoroutine;
     private CanvasGroup containerCanvasGroup;
     private Color originalSpeakerTextColor = Color.white;
+    private float skipTimer = 0f;
 
 
     // Fast mapping for image panels runtime control
@@ -215,8 +231,19 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     private void Update() {
         if (!isDialogueActive) return;
 
-        if (advanceOnKeyInput && GetAdvanceInputPressed()) {
-            AdvanceDialogue();
+        if (allowSkipInput && GetSkipInputPressed()) {
+            skipTimer += Time.unscaledDeltaTime;
+            if (skipTimer >= skipDelay) {
+                skipTimer = 0f;
+                AdvanceDialogue();
+            }
+        } else {
+            // Reset to skipDelay so next press triggers instantly
+            skipTimer = skipDelay;
+
+            if (advanceOnKeyInput && GetAdvanceInputPressed()) {
+                AdvanceDialogue();
+            }
         }
     }
 
@@ -233,6 +260,37 @@ public class VisualNovelDialogueManager : MonoBehaviour {
 #else
         return Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0);
 #endif
+    }
+
+    /// <summary>
+    /// Checks if the skip button (Control) is held down.
+    /// </summary>
+    private bool GetSkipInputPressed() {
+        if (!allowSkipInput) return false;
+#if ENABLE_INPUT_SYSTEM
+        var keyboard = Keyboard.current;
+        return keyboard != null && (keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed);
+#else
+        return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+#endif
+    }
+
+    /// <summary>
+    /// Shows or hides the proceed indicator UI text and controls its looping animation.
+    /// </summary>
+    private void ShowProceedIndicator(bool show) {
+        if (proceedIndicatorText != null) {
+            proceedIndicatorText.gameObject.SetActive(show);
+            if (show) {
+                proceedIndicatorText.text = indicatorFormat;
+                proceedIndicatorText.transform.DOKill(true);
+                proceedIndicatorText.transform.localScale = Vector3.one;
+                proceedIndicatorText.transform.DOScale(1.05f, 0.8f).SetLoops(-1, LoopType.Yoyo).SetEase(Ease.InOutSine).SetUpdate(true);
+            } else {
+                proceedIndicatorText.transform.DOKill();
+                proceedIndicatorText.transform.localScale = Vector3.one;
+            }
+        }
     }
 
     /// <summary>
@@ -292,6 +350,42 @@ public class VisualNovelDialogueManager : MonoBehaviour {
                 }
             }
 
+            // Try to auto-resolve proceedIndicatorText if not assigned
+            if (proceedIndicatorText == null) {
+                Text[] childTexts = dialogueContainer.GetComponentsInChildren<Text>(true);
+                foreach (var t in childTexts) {
+                    string nameLower = t.gameObject.name.ToLower();
+                    if (nameLower.Contains("proceed") || nameLower.Contains("indicator") || nameLower.Contains("skip")) {
+                        proceedIndicatorText = t;
+                        break;
+                    }
+                }
+            }
+
+            // If still null, dynamically spawn a default indicator text component at the bottom-right of the dialogue box
+            if (proceedIndicatorText == null) {
+                GameObject indicatorGo = new GameObject("ProceedIndicator");
+                indicatorGo.transform.SetParent(dialogueContainer.transform, false);
+
+                RectTransform rect = indicatorGo.AddComponent<RectTransform>();
+                rect.anchorMin = new Vector2(1f, 0f);
+                rect.anchorMax = new Vector2(1f, 0f);
+                rect.pivot = new Vector2(1f, 0f);
+                rect.anchoredPosition = new Vector2(-20f, 15f);
+                rect.sizeDelta = new Vector2(300f, 50f);
+
+                proceedIndicatorText = indicatorGo.AddComponent<Text>();
+                proceedIndicatorText.text = indicatorFormat;
+                proceedIndicatorText.alignment = TextAnchor.LowerRight;
+                proceedIndicatorText.color = new Color(1f, 1f, 1f, 0.7f); // Sleek semi-transparent white
+                proceedIndicatorText.fontSize = 13;
+                proceedIndicatorText.supportRichText = true;
+
+                if (FontManager.Instance != null) {
+                    FontManager.Instance.ApplyFontToText(proceedIndicatorText);
+                }
+            }
+
             containerCanvasGroup = dialogueContainer.GetComponent<CanvasGroup>();
             if (containerCanvasGroup == null) {
                 containerCanvasGroup = dialogueContainer.AddComponent<CanvasGroup>();
@@ -309,6 +403,7 @@ public class VisualNovelDialogueManager : MonoBehaviour {
             if (speakerNameText != null) FontManager.Instance.ApplyFontToText(speakerNameText);
             if (dialogueText != null) FontManager.Instance.ApplyFontToText(dialogueText);
             if (translationText != null) FontManager.Instance.ApplyFontToText(translationText);
+            if (proceedIndicatorText != null) FontManager.Instance.ApplyFontToText(proceedIndicatorText);
         }
     }
 
@@ -344,6 +439,9 @@ public class VisualNovelDialogueManager : MonoBehaviour {
             containerCanvasGroup.DOComplete();
             containerCanvasGroup.DOFade(1f, containerFadeDuration).SetUpdate(true);
         }
+
+        // Show indicator immediately and start animation
+        ShowProceedIndicator(true);
 
         PlayCurrentLine();
     }
@@ -683,6 +781,9 @@ public class VisualNovelDialogueManager : MonoBehaviour {
             StopCoroutine(typingCoroutine);
             typingCoroutine = null;
         }
+
+        // Hide indicator
+        ShowProceedIndicator(false);
 
         // Fade dialogue box out
         if (dialogueContainer != null) {
