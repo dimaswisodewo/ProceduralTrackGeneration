@@ -387,6 +387,16 @@ MonoBehaviour:
   distance: 6
   height: 12
   lookAtOffset: {x: 0, y: 1, z: 0}
+  currentPOV: 0
+  topDistance: 6
+  topHeight: 12
+  topLookAtOffset: {x: 0, y: 1, z: 0}
+  behindDistance: 3
+  behindHeight: 1
+  behindLookAtOffset: {x: 0, y: 1, z: 0}
+  driverDistance: -0.5
+  driverHeight: 0.8
+  driverLookAtOffset: {x: 0, y: 0.8, z: 0}
   positionDamping: 5
   rotationDamping: 12
   enableSpeedFOV: 1
@@ -1213,7 +1223,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MapGenerator
   numberOfNodes: 80
   numberOfSpots: 11
-  mapSize: {x: 400, y: 400}
+  mapSize: {x: 200, y: 400}
   cellSize: 4
   straightPrefab: {fileID: 3998984614176541144, guid: 39d3951d82d1541d78bbbd7bb07319b6, type: 3}
   turnPrefab: {fileID: 3034595356720907573, guid: dcfed03d678704f59936e099ddbb5f4d, type: 3}
@@ -1237,6 +1247,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CullingManager
   cullingRadius: 50
   updateInterval: 0.5
+  playerMoveThreshold: 1
 --- !u!114 &1364323802
 MonoBehaviour:
   m_ObjectHideFlags: 0

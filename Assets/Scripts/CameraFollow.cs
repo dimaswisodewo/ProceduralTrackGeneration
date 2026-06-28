@@ -12,8 +12,7 @@ public class CameraFollow : MonoBehaviour {
 
     public enum CameraPOV {
         Top,
-        Behind,
-        Driver
+        Behind
     }
 
     [Header("POV Settings")]
@@ -29,10 +28,6 @@ public class CameraFollow : MonoBehaviour {
     public float behindHeight = 1f;
     public Vector3 behindLookAtOffset = new Vector3(0f, 1f, 0f);
 
-    [Tooltip("Driver POV configurations")]
-    public float driverDistance = -0.5f;
-    public float driverHeight = 0.8f;
-    public Vector3 driverLookAtOffset = new Vector3(0f, 0.8f, 0f);
 
     [Header("Damping (Smoothness)")]
     public float positionDamping = 5f;
@@ -114,11 +109,7 @@ public class CameraFollow : MonoBehaviour {
                 height = behindHeight;
                 lookAtOffset = behindLookAtOffset;
                 break;
-            case CameraPOV.Driver:
-                distance = driverDistance;
-                height = driverHeight;
-                lookAtOffset = driverLookAtOffset;
-                break;
+
         }
     }
 
@@ -151,9 +142,6 @@ public class CameraFollow : MonoBehaviour {
                         nextPOV = CameraPOV.Behind;
                         break;
                     case CameraPOV.Behind:
-                        nextPOV = CameraPOV.Driver;
-                        break;
-                    case CameraPOV.Driver:
                     default:
                         nextPOV = CameraPOV.Top;
                         break;
@@ -163,8 +151,6 @@ public class CameraFollow : MonoBehaviour {
                 ApplyPOV(CameraPOV.Top);
             } else if (CarInputManager.Instance.BehindCameraPressed) {
                 ApplyPOV(CameraPOV.Behind);
-            } else if (CarInputManager.Instance.DriverCameraPressed) {
-                ApplyPOV(CameraPOV.Driver);
             }
         }
 
@@ -185,38 +171,18 @@ public class CameraFollow : MonoBehaviour {
         // Position the camera directly behind the target using the smoothed yaw
         Quaternion currentRotation = Quaternion.Euler(0f, currentYaw, 0f);
         
-        Vector3 targetPosition;
-        Quaternion targetRotation;
-
-        if (currentPOV == CameraPOV.Driver) {
-            Quaternion interpolatedRot = GetInterpolatedTargetRotation();
-            targetPosition = targetPos + (interpolatedRot * new Vector3(0f, height, -distance));
-            targetRotation = interpolatedRot;
-        } else {
-            targetPosition = targetPos - (currentRotation * Vector3.forward * distance);
-            targetPosition.y = targetPos.y + height;
-            
-            Vector3 lookAtTarget = targetPos + lookAtOffset;
-            targetRotation = Quaternion.LookRotation(lookAtTarget - targetPosition);
-        }
+        Vector3 targetPosition = targetPos - (currentRotation * Vector3.forward * distance);
+        targetPosition.y = targetPos.y + height;
 
         // 2. Smoothly Move Camera Position without contaminating follow position with shakeOffset (frame-rate independent)
-        if (currentPOV == CameraPOV.Driver) {
-            currentFollowPosition = targetPosition;
-        } else {
-            float posT = 1f - Mathf.Exp(-positionDamping * Time.deltaTime);
-            currentFollowPosition = Vector3.Lerp(currentFollowPosition, targetPosition, posT);
-        }
+        float posT = 1f - Mathf.Exp(-positionDamping * Time.deltaTime);
+        currentFollowPosition = Vector3.Lerp(currentFollowPosition, targetPosition, posT);
         transform.position = currentFollowPosition + shakeOffset;
 
         // 3. Look at Target/Apply rotation and apply rotational shake
-        if (currentPOV == CameraPOV.Driver) {
-            transform.rotation = targetRotation * Quaternion.Euler(shakeRotationOffset);
-        } else {
-            Vector3 lookAtTarget = targetPos + lookAtOffset;
-            transform.LookAt(lookAtTarget);
-            transform.rotation *= Quaternion.Euler(shakeRotationOffset);
-        }
+        Vector3 lookAtTarget = targetPos + lookAtOffset;
+        transform.LookAt(lookAtTarget);
+        transform.rotation *= Quaternion.Euler(shakeRotationOffset);
 
         // 4. Handle Speed-based FOV Zooming with offsets
         UpdateCameraFOV();
@@ -250,14 +216,6 @@ public class CameraFollow : MonoBehaviour {
         return target.eulerAngles.y;
     }
 
-    private Quaternion GetInterpolatedTargetRotation() {
-        if (targetRigidbody != null) {
-            return (target != targetRigidbody.transform)
-                ? targetRigidbody.transform.rotation * targetLocalRotation
-                : targetRigidbody.transform.rotation;
-        }
-        return target.rotation;
-    }
 
     private void HandleGameOverOrbit() {
         currentYaw += 15f * Time.deltaTime; // Rotates slowly
@@ -294,25 +252,16 @@ public class CameraFollow : MonoBehaviour {
         float targetYawAngle = GetInterpolatedTargetYaw();
         currentYaw = targetYawAngle;
 
-        Vector3 targetPosition;
-        if (currentPOV == CameraPOV.Driver) {
-            Quaternion interpolatedRot = GetInterpolatedTargetRotation();
-            targetPosition = targetPos + (interpolatedRot * new Vector3(0f, height, -distance));
-            transform.position = targetPosition;
-            currentFollowPosition = targetPosition;
-            transform.rotation = interpolatedRot;
-        } else {
-            // Position the camera directly behind the target using the target yaw
-            Quaternion currentRotation = Quaternion.Euler(15f, currentYaw, 0f);
-            targetPosition = targetPos - (currentRotation * Vector3.forward * distance);
-            targetPosition.y = targetPos.y + height;
+        // Position the camera directly behind the target using the target yaw
+        Quaternion currentRotation = Quaternion.Euler(15f, currentYaw, 0f);
+        Vector3 targetPosition = targetPos - (currentRotation * Vector3.forward * distance);
+        targetPosition.y = targetPos.y + height;
 
-            transform.position = targetPosition;
-            currentFollowPosition = targetPosition;
-            
-            Vector3 lookAtTarget = targetPos + lookAtOffset;
-            transform.LookAt(lookAtTarget);
-        }
+        transform.position = targetPosition;
+        currentFollowPosition = targetPosition;
+        
+        Vector3 lookAtTarget = targetPos + lookAtOffset;
+        transform.LookAt(lookAtTarget);
     }
 
     private void OnDestroy() {
