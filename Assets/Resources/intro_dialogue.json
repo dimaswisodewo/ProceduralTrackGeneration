@@ -51,24 +51,24 @@
     "speakerType": "Person",
     "speakerName": "Bro",
     "position": "Left",
-    "primaryText": "\"With these 10 evidence documents. You must take them to 10 different directors across the city.\"",
-    "translationText": "“Dengan 10 dokumen bukti ini. Kamu harus membawanya ke 10 direktur berbeda di seluruh kota.”",
+    "primaryText": "\"With these 10 evidence documents. You must take them to 10 different locations across the city.\"",
+    "translationText": "“Dengan 10 dokumen bukti ini. Kamu harus membawanya ke 10 lokasi berbeda di seluruh kota.”",
     "assetName": "bro_picture.png"
   },
   {
     "speakerType": "Person",
     "speakerName": "Bro",
     "position": "Left",
-    "primaryText": "\"Get an official <color=red>CAP (STAMP)</color> from each one to make them legally valid. Then, bring them to the Supreme Court.\"",
-    "translationText": "“Dapatkan cap resmi dari masing-masing direktur agar sah secara hukum. Lalu, bawa ke Mahkamah Agung.”",
+    "primaryText": "\"Get an official <color=red>STAMP</color> from each one of the authorities to make them legally valid. Then, bring them to the Supreme Court.\"",
+    "translationText": "“Dapatkan <color=red>CAP</color> resmi dari masing-masing pihak berwenang agar sah secara hukum. Lalu, bawa ke Mahkamah Agung.”",
     "assetName": "bro_picture.png"
   },
   {
     "speakerType": "Person",
     "speakerName": "Me",
     "position": "Right",
-    "primaryText": "\"10 directors across the city? That's a long travel. What if the documents get ruined on the way?\"",
-    "translationText": "“10 direktur di seluruh kota? Perjalanannya jauh sekali. Bagaimana kalau dokumennya rusak di jalan?”",
+    "primaryText": "\"10 locations across the city? That's a long travel. What if the documents get ruined on the way?\"",
+    "translationText": "“10 lokasi di seluruh kota? Perjalanannya jauh sekali. Bagaimana kalau dokumennya rusak di jalan?”",
     "assetName": "me_picture.png"
   },
   {
@@ -83,8 +83,8 @@
     "speakerType": "Person",
     "speakerName": "Me",
     "position": "Right",
-    "primaryText": "\"10 offices. 10 <color=red>CAPS (STAMPS)</color>. Save my life. Got it.\"",
-    "translationText": "“10 kantor. 10 cap. Selamatkan hidupku. Mengerti.”",
+    "primaryText": "\"10 locations. 10 <color=red>STAMPS</color>. Save my life. Got it.\"",
+    "translationText": "“10 lokasi. 10 <color=red>CAP</color>. Selamatkan hidupku. Mengerti.”",
     "assetName": "me_picture.png"
   },
   {

@@ -157,7 +157,7 @@ public class VisualNovelDialogueManager : MonoBehaviour {
 
     [Header("Text Settings")]
     [Tooltip("Base speed of typewriter effect in characters per second.")]
-    [SerializeField] private float baseCharactersPerSecond = 30f;
+    [SerializeField] private float baseCharactersPerSecond = 60f;
 
     [Tooltip("If true, dialogue can be advanced using Space or Mouse Left Click.")]
     [SerializeField] private bool advanceOnKeyInput = true;
@@ -189,6 +189,7 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     // Fast mapping for image panels runtime control
     private Dictionary<string, ImagePanelConfig> panelMap = new Dictionary<string, ImagePanelConfig>();
     private Dictionary<string, Tween> panelTweens = new Dictionary<string, Tween>();
+    private Dictionary<string, Vector2> originalPositions = new Dictionary<string, Vector2>();
 
     private void Awake() {
         if (instance == null) {
@@ -239,6 +240,7 @@ public class VisualNovelDialogueManager : MonoBehaviour {
     /// </summary>
     private void InitializePanelMap() {
         panelMap.Clear();
+        originalPositions.Clear();
         foreach (var config in imagePanels) {
             if (string.IsNullOrEmpty(config.panelKey)) continue;
 
@@ -248,6 +250,11 @@ public class VisualNovelDialogueManager : MonoBehaviour {
             }
 
             panelMap.Add(config.panelKey, config);
+
+            // Store original anchored position
+            if (config.imageComponent != null) {
+                originalPositions[config.panelKey] = config.imageComponent.rectTransform.anchoredPosition;
+            }
 
             // Set initial alpha/state of panels to hidden
             SetPanelAlpha(config, 0f);
@@ -519,9 +526,14 @@ public class VisualNovelDialogueManager : MonoBehaviour {
                 existingTween?.Kill();
                 panelTweens.Remove(op.panelKey);
             }
+            if (panel.imageComponent != null) {
+                panel.imageComponent.rectTransform.DOKill(false);
+                panel.imageComponent.transform.DOKill(false);
+            }
 
             switch (op.action) {
                 case ImagePanelAction.ShowOrUpdate:
+                {
                     bool wasActive = panel.imageComponent.gameObject.activeSelf;
                     float currentAlpha = GetPanelAlpha(panel);
 
@@ -537,40 +549,84 @@ public class VisualNovelDialogueManager : MonoBehaviour {
                         panel.imageComponent.transform.localScale = Vector3.one;
                     }
 
-                    if (!wasActive || currentAlpha < 0.01f) {
-                        // Fade in from hidden
-                        panel.imageComponent.gameObject.SetActive(true);
-                        SetPanelAlpha(panel, 0f);
+                    if (originalPositions.TryGetValue(op.panelKey, out Vector2 origPos)) {
+                        if (!wasActive || currentAlpha < 0.01f) {
+                            // Fade & slide in from bottom (Ease.OutBack creates a beautiful bounce/spring entry)
+                            panel.imageComponent.gameObject.SetActive(true);
+                            SetPanelAlpha(panel, 0f);
+                            panel.imageComponent.rectTransform.anchoredPosition = origPos + new Vector2(0f, -40f);
 
-                        if (op.fadeDuration > 0f) {
-                            Tween tween = FadePanel(panel, 1f, op.fadeDuration);
-                            panelTweens[op.panelKey] = tween;
+                            if (op.fadeDuration > 0f) {
+                                panel.imageComponent.rectTransform.DOAnchorPos(origPos, op.fadeDuration).SetEase(Ease.OutBack).SetUpdate(true);
+                                Tween tween = FadePanel(panel, 1f, op.fadeDuration);
+                                panelTweens[op.panelKey] = tween;
+                            } else {
+                                panel.imageComponent.rectTransform.anchoredPosition = origPos;
+                                SetPanelAlpha(panel, 1f);
+                            }
                         } else {
-                            SetPanelAlpha(panel, 1f);
+                            // Already active. Do a quick vertical hop (bounce) and scale pop to signify talking
+                            if (op.fadeDuration > 0f) {
+                                panel.imageComponent.rectTransform.DOPunchPosition(new Vector2(0f, 15f), op.fadeDuration, 2, 0.5f).SetUpdate(true);
+                                panel.imageComponent.transform.DOPunchScale(new Vector3(0.06f, 0.06f, 0f), op.fadeDuration, 5, 0.5f).SetUpdate(true);
+                                Tween tween = FadePanel(panel, 1f, op.fadeDuration);
+                                panelTweens[op.panelKey] = tween;
+                            }
                         }
                     } else {
-                        // Already active. If a new sprite was swapped and we want a visual dip / transition
-                        if (op.fadeDuration > 0f) {
-                            // Punch/scale pop transition is standard and looks great
-                            panel.imageComponent.transform.DOPunchScale(new Vector3(0.05f, 0.05f, 0.05f), op.fadeDuration, 5, 0.5f);
-                            Tween tween = FadePanel(panel, 1f, op.fadeDuration);
-                            panelTweens[op.panelKey] = tween;
+                        // Fallback if original positions are not mapped
+                        if (!wasActive || currentAlpha < 0.01f) {
+                            panel.imageComponent.gameObject.SetActive(true);
+                            SetPanelAlpha(panel, 0f);
+
+                            if (op.fadeDuration > 0f) {
+                                Tween tween = FadePanel(panel, 1f, op.fadeDuration);
+                                panelTweens[op.panelKey] = tween;
+                            } else {
+                                SetPanelAlpha(panel, 1f);
+                            }
+                        } else {
+                            if (op.fadeDuration > 0f) {
+                                panel.imageComponent.transform.DOPunchScale(new Vector3(0.05f, 0.05f, 0.05f), op.fadeDuration, 5, 0.5f).SetUpdate(true);
+                                Tween tween = FadePanel(panel, 1f, op.fadeDuration);
+                                panelTweens[op.panelKey] = tween;
+                            }
                         }
                     }
                     break;
+                }
 
                 case ImagePanelAction.Hide:
+                {
                     if (panel.imageComponent.gameObject.activeSelf) {
-                        if (op.fadeDuration > 0f) {
-                            Tween tween = FadePanel(panel, 0f, op.fadeDuration)
-                                .OnComplete(() => panel.imageComponent.gameObject.SetActive(false));
-                            panelTweens[op.panelKey] = tween;
+                        if (originalPositions.TryGetValue(op.panelKey, out Vector2 origPos)) {
+                            if (op.fadeDuration > 0f) {
+                                // Slide out down & fade out
+                                panel.imageComponent.rectTransform.DOAnchorPos(origPos + new Vector2(0f, -40f), op.fadeDuration).SetEase(Ease.InQuad).SetUpdate(true);
+                                Tween tween = FadePanel(panel, 0f, op.fadeDuration)
+                                    .OnComplete(() => {
+                                        panel.imageComponent.gameObject.SetActive(false);
+                                        panel.imageComponent.rectTransform.anchoredPosition = origPos;
+                                    });
+                                panelTweens[op.panelKey] = tween;
+                            } else {
+                                SetPanelAlpha(panel, 0f);
+                                panel.imageComponent.gameObject.SetActive(false);
+                                panel.imageComponent.rectTransform.anchoredPosition = origPos;
+                            }
                         } else {
-                            SetPanelAlpha(panel, 0f);
-                            panel.imageComponent.gameObject.SetActive(false);
+                            if (op.fadeDuration > 0f) {
+                                Tween tween = FadePanel(panel, 0f, op.fadeDuration)
+                                    .OnComplete(() => panel.imageComponent.gameObject.SetActive(false));
+                                panelTweens[op.panelKey] = tween;
+                            } else {
+                                SetPanelAlpha(panel, 0f);
+                                panel.imageComponent.gameObject.SetActive(false);
+                            }
                         }
                     }
                     break;
+                }
 
                 case ImagePanelAction.Keep:
                     // Do nothing
@@ -639,7 +695,7 @@ public class VisualNovelDialogueManager : MonoBehaviour {
                 });
         }
 
-        // Fade all active image panels out
+        // Fade and slide all active image panels out
         foreach (var entry in panelMap) {
             var panel = entry.Value;
             if (panel.imageComponent.gameObject.activeSelf) {
@@ -647,9 +703,24 @@ public class VisualNovelDialogueManager : MonoBehaviour {
                     t?.Kill();
                 }
 
-                Tween tween = FadePanel(panel, 0f, containerFadeDuration)
-                    .OnComplete(() => panel.imageComponent.gameObject.SetActive(false));
-                panelTweens[entry.Key] = tween;
+                if (panel.imageComponent != null) {
+                    panel.imageComponent.rectTransform.DOKill(false);
+                    panel.imageComponent.transform.DOKill(false);
+                }
+
+                if (originalPositions.TryGetValue(entry.Key, out Vector2 origPos)) {
+                    panel.imageComponent.rectTransform.DOAnchorPos(origPos + new Vector2(0f, -40f), containerFadeDuration).SetEase(Ease.InQuad).SetUpdate(true);
+                    Tween tween = FadePanel(panel, 0f, containerFadeDuration)
+                        .OnComplete(() => {
+                            panel.imageComponent.gameObject.SetActive(false);
+                            panel.imageComponent.rectTransform.anchoredPosition = origPos;
+                        });
+                    panelTweens[entry.Key] = tween;
+                } else {
+                    Tween tween = FadePanel(panel, 0f, containerFadeDuration)
+                        .OnComplete(() => panel.imageComponent.gameObject.SetActive(false));
+                    panelTweens[entry.Key] = tween;
+                }
             }
         }
 
@@ -774,19 +845,52 @@ public class VisualNovelDialogueManager : MonoBehaviour {
             line.typingSpeedMultiplier = 1f;
             line.imageOperations = new List<DialogueImageOperation>();
 
-            // Handle panel operations for this entry
+            // Find if there is a panel key matching the asset name or position
+            string activePanelKey = null;
+            Sprite sprite = null;
+
             if (!string.IsNullOrEmpty(entry.assetName)) {
-                Sprite sprite = LoadSpriteFromResources(entry.assetName);
+                sprite = LoadSpriteFromResources(entry.assetName);
                 if (sprite != null) {
-                    DialogueImageOperation op = new DialogueImageOperation();
-                    op.panelKey = entry.position.ToString(); // "Left" or "Right"
+                    // Check if entry.assetName is registered in imagePanels
+                    bool hasAssetPanel = false;
+                    foreach (var panel in imagePanels) {
+                        if (panel.panelKey == entry.assetName) {
+                            hasAssetPanel = true;
+                            break;
+                        }
+                    }
+
+                    if (hasAssetPanel) {
+                        activePanelKey = entry.assetName;
+                    } else {
+                        // Fallback to position
+                        activePanelKey = entry.position.ToString();
+                    }
+                }
+            }
+
+            // Create operations for all panels to ensure correct show/hide state
+            foreach (var panel in imagePanels) {
+                if (string.IsNullOrEmpty(panel.panelKey)) continue;
+
+                // Skip background/BG panels from auto show/hide character logic
+                string keyLower = panel.panelKey.ToLower();
+                if (keyLower == "bg" || keyLower == "background") continue;
+
+                DialogueImageOperation op = new DialogueImageOperation();
+                op.panelKey = panel.panelKey;
+                op.preserveAspect = true;
+                op.fadeDuration = 0.3f;
+                op.customScale = Vector3.one;
+
+                if (panel.panelKey == activePanelKey) {
                     op.action = ImagePanelAction.ShowOrUpdate;
                     op.spriteToDisplay = sprite;
-                    op.preserveAspect = true;
-                    op.fadeDuration = 0.3f;
-                    op.customScale = Vector3.one;
-                    line.imageOperations.Add(op);
+                } else {
+                    op.action = ImagePanelAction.Hide;
                 }
+                line.imageOperations.Add(op);
             }
 
             lines.Add(line);
