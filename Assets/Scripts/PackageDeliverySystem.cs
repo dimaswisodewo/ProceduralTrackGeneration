@@ -170,11 +170,11 @@ public class PackageDeliverySystem : MonoBehaviour {
             int collected = collectedStampSpots.Count;
             int total = stampSpots.Count;
             string text = $"OBJECTIVE: Collect stamps from The Authorities to validate evidence. ({collected}/{total} collected)";
-            Color color = new Color(0.75f, 0.35f, 1.0f); // Vibrant Pastel Purple
+            Color color = new Color(0.85f, 0.68f, 1.0f); // Vibrant Pastel Lilac/Purple
             UIManager.Instance.SetObjectiveText(text, color);
         } else if (currentState == DeliveryState.HeadingToFinalDestination) {
             string text = "OBJECTIVE: Bring the bulletproof evidence to the Supreme Court!";
-            Color color = new Color(1.0f, 0.68f, 0.35f); // Vibrant Pastel Gold/Orange
+            Color color = new Color(1.0f, 0.75f, 0.55f); // Vibrant Pastel Peach/Orange
             UIManager.Instance.SetObjectiveText(text, color);
         }
     }
@@ -236,14 +236,14 @@ public class PackageDeliverySystem : MonoBehaviour {
                     }
                     if (UIManager.Instance != null) {
                         string nextText = "OBJECTIVE: Bring the bulletproof evidence to the Supreme Court!";
-                        Color nextColor = new Color(1.0f, 0.68f, 0.35f); // Vibrant Pastel Gold/Orange
+                        Color nextColor = new Color(1.0f, 0.75f, 0.55f); // Vibrant Pastel Peach/Orange
                         UIManager.Instance.FlashObjectiveSuccessText("EVIDENCE IS BULLETPROOF! Head to the Supreme Court!", nextText, nextColor);
                     }
                 } else {
                     UpdatePointerDirection();
                     if (UIManager.Instance != null) {
                         string nextText = $"OBJECTIVE: Collect stamps from The Authorities to validate evidence. ({collected}/{total} collected)";
-                        Color nextColor = new Color(0.75f, 0.35f, 1.0f); // Vibrant Pastel Purple
+                        Color nextColor = new Color(0.85f, 0.68f, 1.0f); // Vibrant Pastel Lilac/Purple
                         UIManager.Instance.FlashObjectiveSuccessText($"EVIDENCE STAMPED! ({collected}/{total} validated)", nextText, nextColor);
                     }
                 }

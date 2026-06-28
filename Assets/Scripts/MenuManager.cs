@@ -168,8 +168,8 @@ public class MenuManager : MonoBehaviour {
 
         Text txt = textGo.AddComponent<Text>();
         txt.text = "Music from #Uppbeat (free for Creators!):\n\n" +
-                   "<color=#5CACE2>https://uppbeat.io/t/kevin-macleod/blockman</color>\n" +
-                   "<color=#5CACE2>https://uppbeat.io/track/dark-cat/a-day-in-my-life</color>\n\n\n" +
+                   "<color=#A6D9FF>https://uppbeat.io/t/kevin-macleod/blockman</color>\n" +
+                   "<color=#A6D9FF>https://uppbeat.io/track/dark-cat/a-day-in-my-life</color>\n\n\n" +
                    "<size=18><color=#aaaaaa>(Press Space or Click to continue)</color></size>";
         
         // Set alignment and support rich text

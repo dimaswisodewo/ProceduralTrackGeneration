@@ -121,7 +121,7 @@ public class UIManager : MonoBehaviour {
             damageText = damageTextObject.GetComponent<Text>();
         }
         if (damageText == null) {
-            damageText = GetOrCreateUIText("PackageWarningText", new Vector2(0f, -110f), new Vector2(720f, 65f), 22, new Color(1f, 0.35f, 0.35f), TextAnchor.MiddleCenter);
+            damageText = GetOrCreateUIText("PackageWarningText", new Vector2(0f, -110f), new Vector2(720f, 65f), 22, new Color(1f, 0.58f, 0.58f), TextAnchor.MiddleCenter);
             if (damageText != null) {
                 damageText.fontStyle = FontStyle.Bold;
                 damageTextObject = damageText.gameObject;
@@ -134,7 +134,7 @@ public class UIManager : MonoBehaviour {
             successText = successTextObject.GetComponent<Text>();
         }
         if (successText == null) {
-            successText = GetOrCreateUIText("PackageSuccessText", new Vector2(0f, -170f), new Vector2(720f, 65f), 22, new Color(0.45f, 0.85f, 0.55f), TextAnchor.MiddleCenter);
+            successText = GetOrCreateUIText("PackageSuccessText", new Vector2(0f, -170f), new Vector2(720f, 65f), 22, new Color(0.6f, 0.92f, 0.72f), TextAnchor.MiddleCenter);
             if (successText != null) {
                 successText.fontStyle = FontStyle.Bold;
                 successTextObject = successText.gameObject;
@@ -161,7 +161,7 @@ public class UIManager : MonoBehaviour {
             }
         }
         if (scoreText == null) {
-            scoreText = GetOrCreateUIText("PackageScoreText", new Vector2(-20f, -20f), new Vector2(350f, 40f), 20, new Color(1.0f, 0.85f, 0.2f), TextAnchor.MiddleRight);
+            scoreText = GetOrCreateUIText("PackageScoreText", new Vector2(-20f, -20f), new Vector2(350f, 40f), 20, new Color(1.0f, 0.9f, 0.55f), TextAnchor.MiddleRight);
             if (scoreText != null) {
                 RectTransform rect = scoreText.GetComponent<RectTransform>();
                 rect.anchorMin = new Vector2(1f, 1f);
@@ -249,7 +249,7 @@ public class UIManager : MonoBehaviour {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
                             objectivesText.text = "EVIDENCE RUINED! You'll rot in a prison cell! Press R to Restart the game.";
-                            objectivesText.color = new Color(1.0f, 0.4f, 0.4f); // Vibrant Pastel Red/Coral
+                            objectivesText.color = new Color(1.0f, 0.58f, 0.58f); // Vibrant Pastel Red/Coral
                         }
                     }
                 }
@@ -277,7 +277,7 @@ public class UIManager : MonoBehaviour {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
                             objectivesText.text = "TRIAL WON! The evidence is legally bulletproof! Press R to restart.";
-                            objectivesText.color = new Color(0.35f, 0.9f, 0.55f); // Vibrant Pastel Green
+                            objectivesText.color = new Color(0.6f, 0.92f, 0.72f); // Vibrant Pastel Green
                         }
                     }
                 }
@@ -297,11 +297,11 @@ public class UIManager : MonoBehaviour {
             healthBarFillImage.DOComplete();
             Color targetColor;
             if (currentHealth > 70f) {
-                targetColor = new Color(0.2f, 0.8f, 0.2f, 0.9f); // Green
+                targetColor = new Color(0.6f, 0.88f, 0.68f, 0.95f); // Pastel Green
             } else if (currentHealth > 30f) {
-                targetColor = new Color(0.9f, 0.65f, 0.1f, 0.9f); // Yellow/Orange
+                targetColor = new Color(1.0f, 0.82f, 0.52f, 0.95f); // Pastel Yellow/Orange
             } else {
-                targetColor = new Color(0.9f, 0.2f, 0.2f, 0.9f); // Red
+                targetColor = new Color(1.0f, 0.55f, 0.55f, 0.95f); // Pastel Red/Coral
             }
             healthBarFillImage.DOColor(targetColor, 0.3f);
         }
@@ -414,7 +414,7 @@ public class UIManager : MonoBehaviour {
         successText.text = msg;
         successTextObject.SetActive(true);
 
-        Color c = new Color(0.4f, 0.75f, 1f); // Smooth light blue notification color
+        Color c = new Color(0.65f, 0.85f, 1f); // Smooth light blue notification color
         successText.color = c;
         successTextObject.transform.localScale = Vector3.zero;
 

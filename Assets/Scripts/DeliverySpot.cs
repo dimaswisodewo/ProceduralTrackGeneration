@@ -27,13 +27,13 @@ public class DeliverySpot : MonoBehaviour {
     }
 
     private void CreateVisualRing() {
-        // Create a flat cylinder to act as a landing pad/zone ring
-        ringVisual = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        // Create a cube to act as a hologram light box
+        ringVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
         Destroy(ringVisual.GetComponent<Collider>()); // Visual only, remove physics
 
         ringVisual.transform.parent = this.transform;
-        ringVisual.transform.localPosition = new Vector3(0f, 0.05f, 0f); // Hover slightly above ground
-        ringVisual.transform.localScale = new Vector3(3f, 0.02f, 3f); // Wide and flat
+        ringVisual.transform.localPosition = new Vector3(0f, 2.5f, 0f); // Centered at half height to sit flat on ground
+        ringVisual.transform.localScale = new Vector3(3f, 5f, 3f); // Taller cube to cover the entire spot
         ringVisual.transform.localRotation = Quaternion.identity;
         ringVisual.layer = 30; // Main Camera Only / Hide from Minimap
 
@@ -80,50 +80,57 @@ public class DeliverySpot : MonoBehaviour {
         }
 
         Color ringColor;
+        Color ringEmissionColor = Color.black;
         Color spotColor;
-        Color emissionColor = Color.black;
+        Color spotEmissionColor = Color.black;
         bool enableEmission = false;
 
         if (isPickupTarget) {
-            // Glowing purple for stamp spots (every spot)
-            ringColor = new Color(0.75f, 0.2f, 0.95f, 0.5f); // Transparent Purple
-            spotColor = new Color(0.75f, 0.2f, 0.95f, 1.0f); // Opaque Solid Purple
-            emissionColor = new Color(0.75f, 0.2f, 0.95f) * 2.5f; // Stronger HDR Emission to contrast
+            // Hologram box is very transparent lilac, spot 3D is a highly vibrant neon pink
+            ringColor = new Color(0.85f, 0.68f, 1.0f, 0.08f); // High transparency Lilac Hologram
+            ringEmissionColor = new Color(0.85f, 0.68f, 1.0f) * 0.4f; // Soft hologram outline glow (lowered emission)
+            
+            spotColor = new Color(1.0f, 0.15f, 0.75f, 1.0f); // Vibrant Solid Neon Pink/Magenta for spot 3D
+            spotEmissionColor = new Color(1.0f, 0.15f, 0.75f) * 6.0f; // High-contrast intense HDR emission
             enableEmission = true;
         } else if (isDeliveryTarget) {
-            // Glowing orange for the last destination
-            ringColor = new Color(1.0f, 0.45f, 0.0f, 0.5f); // Transparent Orange
-            spotColor = new Color(1.0f, 0.45f, 0.0f, 1.0f); // Opaque Solid Orange
-            emissionColor = new Color(1.0f, 0.45f, 0.0f) * 2.5f; // Stronger HDR Emission to contrast
+            // Hologram box is very transparent peach, spot 3D is a highly vibrant electric cyan
+            ringColor = new Color(1.0f, 0.75f, 0.55f, 0.08f); // High transparency Peach Hologram
+            ringEmissionColor = new Color(1.0f, 0.75f, 0.55f) * 0.4f; // Soft hologram outline glow (lowered emission)
+            
+            spotColor = new Color(0.15f, 0.75f, 1.0f, 1.0f); // Vibrant Solid Electric Cyan/Blue for spot 3D
+            spotEmissionColor = new Color(0.15f, 0.75f, 1.0f) * 6.0f; // High-contrast intense HDR emission
             enableEmission = true;
         } else {
             // Dim, semi-transparent light grey for inactive spots
-            ringColor = new Color(0.6f, 0.6f, 0.6f, 0.08f);
+            ringColor = new Color(0.6f, 0.6f, 0.6f, 0.02f);
+            ringEmissionColor = Color.black;
+            
             spotColor = new Color(0.35f, 0.35f, 0.35f, 1.0f); // Make inactive spot opaque grey
-            emissionColor = Color.black;
+            spotEmissionColor = Color.black;
             enableEmission = false;
         }
 
-        // Apply to the ring (transparent)
-        VisualEffectUtility.ApplyMaterialColor(ringMaterial, ringColor, emissionColor, enableEmission);
+        // Apply to the hologram box (transparent)
+        VisualEffectUtility.ApplyMaterialColor(ringMaterial, ringColor, ringEmissionColor, enableEmission);
 
         // Apply to the main spot 3D object (opaque)
         if (spotMaterials != null) {
             foreach (var mat in spotMaterials) {
-                VisualEffectUtility.ApplyMaterialColor(mat, spotColor, emissionColor, enableEmission);
+                VisualEffectUtility.ApplyMaterialColor(mat, spotColor, spotEmissionColor, enableEmission);
             }
         }
 
         if (ringVisual != null) {
             if (isPickupTarget || isDeliveryTarget) {
-                // Animate scale to pulsate
-                ringVisual.transform.localScale = new Vector3(3f, 0.02f, 3f);
-                pulseTween = ringVisual.transform.DOScale(new Vector3(3.6f, 0.02f, 3.6f), 0.8f)
+                // Animate scale to pulsate in 3D (hologram box breathing effect)
+                ringVisual.transform.localScale = new Vector3(3f, 5f, 3f);
+                pulseTween = ringVisual.transform.DOScale(new Vector3(3.25f, 5.25f, 3.25f), 1.2f)
                     .SetLoops(-1, LoopType.Yoyo)
                     .SetEase(Ease.InOutSine);
             } else {
                 // Settle back to default scale for inactive zones
-                ringVisual.transform.localScale = new Vector3(3f, 0.02f, 3f);
+                ringVisual.transform.localScale = new Vector3(3f, 5f, 3f);
             }
         }
     }

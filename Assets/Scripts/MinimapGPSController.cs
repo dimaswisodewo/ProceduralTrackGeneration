@@ -9,9 +9,9 @@ public class MinimapGPSController : MonoBehaviour {
     public float gpsUpdateInterval = 0.15f;
     public float pathHeightOffset = 0.22f;
     public float lineWidth = 0.9f;
-    public Color gpsPathColor = new Color(0.75f, 0.35f, 1.0f, 0.95f); // Vibrant Neon Pastel Purple
-    public Color pickupIconColor = new Color(0.75f, 0.2f, 0.95f, 1f); // Vibrant Neon Pastel Purple
-    public Color deliveryIconColor = new Color(1.0f, 0.45f, 0.0f, 1f); // Vibrant Neon Pastel Orange
+    public Color gpsPathColor = new Color(0.85f, 0.68f, 1.0f, 0.95f); // Vibrant Neon Pastel Purple (Lilac)
+    public Color pickupIconColor = new Color(0.85f, 0.68f, 1.0f, 1f); // Vibrant Neon Pastel Purple (Lilac)
+    public Color deliveryIconColor = new Color(1.0f, 0.75f, 0.55f, 1f); // Vibrant Neon Pastel Orange (Peach)
 
     [Header("Optimization Settings")]
     [Tooltip("Target frame rate for the minimap rendering. Lower values save GPU power.")]
@@ -90,7 +90,7 @@ public class MinimapGPSController : MonoBehaviour {
         minimapCamera.orthographicSize = minimapOrthoSize;
         minimapCamera.targetTexture = minimapRT;
         minimapCamera.clearFlags = CameraClearFlags.SolidColor;
-        minimapCamera.backgroundColor = new Color(0.08f, 0.08f, 0.1f, 1f); // Dark background matching pastel theme
+        minimapCamera.backgroundColor = new Color(0.1f, 0.1f, 0.12f, 1f); // Dark background matching pastel theme
 
         // Inherit culling mask from main camera
         if (Camera.main != null) {
@@ -138,7 +138,7 @@ public class MinimapGPSController : MonoBehaviour {
             new Rect(0, 0, 256, 256), 
             new Vector2(0.5f, 0.5f)
         );
-        borderImage.color = new Color(0.12f, 0.12f, 0.16f, 0.85f); // Glass dark base with dark border
+        borderImage.color = new Color(0.15f, 0.15f, 0.18f, 0.9f); // Glass dark base with dark border
 
         // Add a neon glow outline image to frame the minimap beautifully
         GameObject glowFrame = new GameObject("MinimapGlowFrame");
@@ -213,7 +213,7 @@ public class MinimapGPSController : MonoBehaviour {
 
         Image playerIconImage = playerIconObj.AddComponent<Image>();
         playerIconImage.sprite = circle64Sprite;
-        playerIconImage.color = new Color(0.95f, 0.25f, 0.25f, 1f); // Vibrant pastel red player icon
+        playerIconImage.color = new Color(1.0f, 0.58f, 0.58f, 1f); // Vibrant pastel red/coral player icon
 
         // Add a subtle drop shadow to player icon
         playerIconObj.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.6f);
