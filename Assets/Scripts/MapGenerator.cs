@@ -741,59 +741,51 @@ public class MapGenerator : MonoBehaviour {
             spawnedSpotObj.transform.position = position + new Vector3(0f, 0.5f, 0f);
             spawnedSpotObj.transform.parent = transform;
 
-            // 1. Base Cylinder
+            // 1. Base Pedestal
             GameObject baseTier = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             baseTier.name = "Base";
             if (baseTier.GetComponent<Collider>() != null) DestroyImmediate(baseTier.GetComponent<Collider>());
             baseTier.transform.parent = spawnedSpotObj.transform;
-            baseTier.transform.localPosition = new Vector3(0f, 0.1f, 0f); // sitting on global ground: 0.6f center - 0.5f parent Y = 0.1f local
-            baseTier.transform.localScale = new Vector3(1.6f, 0.6f, 1.6f); // Cylinder height is 2 -> 2 * 0.6 = 1.2 units tall
+            baseTier.transform.localPosition = new Vector3(0f, -0.4f, 0f);
+            baseTier.transform.localScale = new Vector3(1.6f, 0.1f, 1.6f);
 
-            // 2. Main Tower Shaft (Cylinder)
-            GameObject shaft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            shaft.name = "Shaft";
-            if (shaft.GetComponent<Collider>() != null) DestroyImmediate(shaft.GetComponent<Collider>());
-            shaft.transform.parent = spawnedSpotObj.transform;
-            shaft.transform.localPosition = new Vector3(0f, 2.95f, 0f); // global 3.45f - 0.5f = 2.95f local
-            shaft.transform.localScale = new Vector3(1.0f, 2.25f, 1.0f); // Cylinder height is 2 -> 2 * 2.25 = 4.5 units tall
+            // 2. Lower Tower Block
+            GameObject lowerBlock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            lowerBlock.name = "LowerBlock";
+            if (lowerBlock.GetComponent<Collider>() != null) DestroyImmediate(lowerBlock.GetComponent<Collider>());
+            lowerBlock.transform.parent = spawnedSpotObj.transform;
+            lowerBlock.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+            lowerBlock.transform.localScale = new Vector3(1.2f, 3.0f, 1.2f);
 
-            // 3. Balcony / Trim (Cylinder)
-            GameObject balcony = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            balcony.name = "Balcony";
-            if (balcony.GetComponent<Collider>() != null) DestroyImmediate(balcony.GetComponent<Collider>());
-            balcony.transform.parent = spawnedSpotObj.transform;
-            balcony.transform.localPosition = new Vector3(0f, 2.95f, 0f); // global 3.45f - 0.5f = 2.95f local
-            balcony.transform.localScale = new Vector3(1.3f, 0.1f, 1.3f); // 0.2 units tall
+            // 3. Middle Tower Block
+            GameObject middleBlock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            middleBlock.name = "MiddleBlock";
+            if (middleBlock.GetComponent<Collider>() != null) DestroyImmediate(middleBlock.GetComponent<Collider>());
+            middleBlock.transform.parent = spawnedSpotObj.transform;
+            middleBlock.transform.localPosition = new Vector3(0f, 3.5f, 0f);
+            middleBlock.transform.localScale = new Vector3(0.9f, 2.0f, 0.9f);
 
-            // 4. Dome (Sphere)
-            GameObject dome = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            dome.name = "Dome";
-            if (dome.GetComponent<Collider>() != null) DestroyImmediate(dome.GetComponent<Collider>());
-            dome.transform.parent = spawnedSpotObj.transform;
-            dome.transform.localPosition = new Vector3(0f, 5.2f, 0f); // global 5.7f - 0.5f = 5.2f local
-            dome.transform.localScale = new Vector3(1.3f, 1.3f, 1.3f); // Sphere radius matches shaft
+            // 4. Upper Tower Block
+            GameObject upperBlock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            upperBlock.name = "UpperBlock";
+            if (upperBlock.GetComponent<Collider>() != null) DestroyImmediate(upperBlock.GetComponent<Collider>());
+            upperBlock.transform.parent = spawnedSpotObj.transform;
+            upperBlock.transform.localPosition = new Vector3(0f, 5.0f, 0f);
+            upperBlock.transform.localScale = new Vector3(0.6f, 1.0f, 0.6f);
 
-            // 5. Spire (Cylinder)
+            // 5. Spire Needle
             GameObject spire = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             spire.name = "Spire";
             if (spire.GetComponent<Collider>() != null) DestroyImmediate(spire.GetComponent<Collider>());
             spire.transform.parent = spawnedSpotObj.transform;
-            spire.transform.localPosition = new Vector3(0f, 6.6f, 0f); // global 7.1f - 0.5f = 6.6f local
-            spire.transform.localScale = new Vector3(0.15f, 0.75f, 0.15f); // Cylinder height is 2 -> 2 * 0.75 = 1.5 units tall
+            spire.transform.localPosition = new Vector3(0f, 6.0f, 0f);
+            spire.transform.localScale = new Vector3(0.12f, 0.5f, 0.12f);
 
-            // 6. Spire Tip / Ornament (Sphere)
-            GameObject tip = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            tip.name = "Tip";
-            if (tip.GetComponent<Collider>() != null) DestroyImmediate(tip.GetComponent<Collider>());
-            tip.transform.parent = spawnedSpotObj.transform;
-            tip.transform.localPosition = new Vector3(0f, 7.5f, 0f); // global 8.0f - 0.5f = 7.5f local
-            tip.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
-
-            // 7. Add a clean capsule collider to the parent for physical collision
+            // 6. Capsule Collider for physical collision
             CapsuleCollider solidCollider = spawnedSpotObj.AddComponent<CapsuleCollider>();
             solidCollider.height = 7.0f;
             solidCollider.radius = 0.8f;
-            solidCollider.center = new Vector3(0f, 3.0f, 0f); // center local Y is 3.0f (global Y = 3.5f)
+            solidCollider.center = new Vector3(0f, 3.0f, 0f);
         } else {
             bool hasNorth = neighbors.Contains(new GridPos(current.x, current.z + 1));
             bool hasSouth = neighbors.Contains(new GridPos(current.x, current.z - 1));
