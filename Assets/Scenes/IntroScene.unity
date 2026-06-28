@@ -153,8 +153,8 @@ MonoBehaviour:
   sfxHitObstacle: {fileID: 8300000, guid: 0bb57dc16b481427d93dcfac7259f661, type: 3}
   sfxObjectiveSuccess: {fileID: 8300000, guid: 630a7ece5563d4c5c803c7cfe066d098, type: 3}
   sfxHealthZero: {fileID: 8300000, guid: 835a8397ba0b842dc87728de024cef6e, type: 3}
-  sfxDrifting: {fileID: 0}
-  sfxCarEngine: {fileID: 0}
+  sfxDrifting: {fileID: 8300000, guid: 4ed014828135a481d834feb16928a448, type: 3}
+  sfxCarEngine: {fileID: 8300000, guid: 701590f9221524493bedca7fe52e1a59, type: 3}
   sfxDialogue: {fileID: 8300000, guid: 6659cf81db75a456a814e7ab0520a485, type: 3}
 --- !u!4 &225538100
 Transform:
