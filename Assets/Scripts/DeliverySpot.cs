@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using DG.Tweening;
 
 public class DeliverySpot : MonoBehaviour {
@@ -7,6 +8,7 @@ public class DeliverySpot : MonoBehaviour {
 
     private GameObject ringVisual;
     private Material ringMaterial;
+    private List<Material> spotMaterials = new List<Material>();
     private Tween pulseTween;
 
     private void Start() {
@@ -19,6 +21,9 @@ public class DeliverySpot : MonoBehaviour {
 
         // 2. Create the flat visual ring representing the zone
         CreateVisualRing();
+
+        // 3. Initialize the 3D spot object (cube/prefab) materials with SpotMaterial copy so they can glow
+        InitializeSpotMaterials();
     }
 
     private void CreateVisualRing() {
@@ -41,6 +46,25 @@ public class DeliverySpot : MonoBehaviour {
         UpdateVisuals();
     }
 
+    private void InitializeSpotMaterials() {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        foreach (var r in renderers) {
+            if (ringVisual != null && r.gameObject == ringVisual) {
+                continue;
+            }
+            
+            // Assign a unique copy of the spot material
+            Material mat = VisualEffectUtility.GetSpotMaterial();
+            
+            // Configure it to be completely opaque so it contrasts with other buildings
+            VisualEffectUtility.ConfigureOpaqueMaterial(mat);
+            
+            r.sharedMaterial = mat;
+            spotMaterials.Add(mat);
+        }
+        UpdateVisuals();
+    }
+
     public void SetAsTarget(bool isTarget, bool isPickup = false) {
         isDeliveryTarget = isTarget && !isPickup;
         isPickupTarget = isTarget && isPickup;
@@ -55,19 +79,40 @@ public class DeliverySpot : MonoBehaviour {
             pulseTween = null;
         }
 
-        Color targetColor;
+        Color ringColor;
+        Color spotColor;
+        Color emissionColor = Color.black;
+        bool enableEmission = false;
+
         if (isPickupTarget) {
-            // Glowing pastel blue for package pickup
-            targetColor = new Color(0.5f, 0.75f, 0.95f, 0.4f);
+            // Glowing purple for stamp spots (every spot)
+            ringColor = new Color(0.75f, 0.2f, 0.95f, 0.5f); // Transparent Purple
+            spotColor = new Color(0.75f, 0.2f, 0.95f, 1.0f); // Opaque Solid Purple
+            emissionColor = new Color(0.75f, 0.2f, 0.95f) * 2.5f; // Stronger HDR Emission to contrast
+            enableEmission = true;
         } else if (isDeliveryTarget) {
-            // Glowing pastel orange/peach for delivery destination
-            targetColor = new Color(0.95f, 0.65f, 0.45f, 0.4f);
+            // Glowing orange for the last destination
+            ringColor = new Color(1.0f, 0.45f, 0.0f, 0.5f); // Transparent Orange
+            spotColor = new Color(1.0f, 0.45f, 0.0f, 1.0f); // Opaque Solid Orange
+            emissionColor = new Color(1.0f, 0.45f, 0.0f) * 2.5f; // Stronger HDR Emission to contrast
+            enableEmission = true;
         } else {
             // Dim, semi-transparent light grey for inactive spots
-            targetColor = new Color(0.6f, 0.6f, 0.6f, 0.08f);
+            ringColor = new Color(0.6f, 0.6f, 0.6f, 0.08f);
+            spotColor = new Color(0.35f, 0.35f, 0.35f, 1.0f); // Make inactive spot opaque grey
+            emissionColor = Color.black;
+            enableEmission = false;
         }
 
-        VisualEffectUtility.ApplyMaterialColor(ringMaterial, targetColor);
+        // Apply to the ring (transparent)
+        VisualEffectUtility.ApplyMaterialColor(ringMaterial, ringColor, emissionColor, enableEmission);
+
+        // Apply to the main spot 3D object (opaque)
+        if (spotMaterials != null) {
+            foreach (var mat in spotMaterials) {
+                VisualEffectUtility.ApplyMaterialColor(mat, spotColor, emissionColor, enableEmission);
+            }
+        }
 
         if (ringVisual != null) {
             if (isPickupTarget || isDeliveryTarget) {
@@ -99,6 +144,14 @@ public class DeliverySpot : MonoBehaviour {
         }
         if (ringMaterial != null) {
             Destroy(ringMaterial);
+        }
+        if (spotMaterials != null) {
+            foreach (var mat in spotMaterials) {
+                if (mat != null) {
+                    Destroy(mat);
+                }
+            }
+            spotMaterials.Clear();
         }
     }
 }

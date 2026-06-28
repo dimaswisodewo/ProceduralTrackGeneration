@@ -254,6 +254,43 @@ public static class VisualEffectUtility {
         }
     }
 
+    public static void ApplyMaterialColor(Material mat, Color color, Color emissionColor, bool enableEmission) {
+        if (mat == null) return;
+        mat.color = color;
+        if (mat.HasProperty("_BaseColor")) {
+            mat.SetColor("_BaseColor", color);
+        }
+        if (mat.HasProperty("_Color")) {
+            mat.SetColor("_Color", color);
+        }
+        if (mat.HasProperty("_EmissionColor")) {
+            mat.SetColor("_EmissionColor", emissionColor);
+        }
+        if (enableEmission) {
+            mat.EnableKeyword("_EMISSION");
+        } else {
+            mat.DisableKeyword("_EMISSION");
+        }
+    }
+
+    public static void ConfigureOpaqueMaterial(Material mat) {
+        if (mat == null) return;
+        
+        // Setup rendering queue and surface properties to make URP Lit shader opaque
+        mat.SetFloat("_Surface", 0f); // 0 = Opaque
+        mat.SetFloat("_Blend", 0f);   // 0 = Alpha Blend
+        mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+        mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+        mat.SetInt("_ZWrite", 1);
+        
+        mat.DisableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        mat.DisableKeyword("_ALPHABLEND_ON");
+        mat.DisableKeyword("_ALPHATEST_ON");
+        
+        mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Geometry;
+    }
+
     // --- Internal Helpers ---
 
     private static Shader FindFireShader() {

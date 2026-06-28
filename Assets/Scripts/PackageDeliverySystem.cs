@@ -170,7 +170,7 @@ public class PackageDeliverySystem : MonoBehaviour {
             int collected = collectedStampSpots.Count;
             int total = stampSpots.Count;
             string text = $"OBJECTIVE: Collect stamps from The Authorities to validate evidence. ({collected}/{total} collected)";
-            Color color = new Color(0.35f, 0.78f, 1.0f); // Vibrant Pastel Blue
+            Color color = new Color(0.75f, 0.35f, 1.0f); // Vibrant Pastel Purple
             UIManager.Instance.SetObjectiveText(text, color);
         } else if (currentState == DeliveryState.HeadingToFinalDestination) {
             string text = "OBJECTIVE: Bring the bulletproof evidence to the Supreme Court!";
@@ -243,7 +243,7 @@ public class PackageDeliverySystem : MonoBehaviour {
                     UpdatePointerDirection();
                     if (UIManager.Instance != null) {
                         string nextText = $"OBJECTIVE: Collect stamps from The Authorities to validate evidence. ({collected}/{total} collected)";
-                        Color nextColor = new Color(0.35f, 0.78f, 1.0f); // Vibrant Pastel Blue
+                        Color nextColor = new Color(0.75f, 0.35f, 1.0f); // Vibrant Pastel Purple
                         UIManager.Instance.FlashObjectiveSuccessText($"EVIDENCE STAMPED! ({collected}/{total} validated)", nextText, nextColor);
                     }
                 }
