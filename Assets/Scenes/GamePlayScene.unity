@@ -394,15 +394,17 @@ MonoBehaviour:
   behindDistance: 3
   behindHeight: 1
   behindLookAtOffset: {x: 0, y: 1, z: 0}
-  driverDistance: -0.5
-  driverHeight: 0.8
-  driverLookAtOffset: {x: 0, y: 0.8, z: 0}
   positionDamping: 5
   rotationDamping: 12
   enableSpeedFOV: 1
   minFOV: 60
   maxFOV: 78
   maxSpeedForFOV: 5
+  topCameraComfortMode: 1
+  behindCameraComfortMode: 0
+  lockYaw: 0
+  comfortPositionDamping: 3.5
+  comfortRotationDamping: 4
 --- !u!114 &330585549
 MonoBehaviour:
   m_ObjectHideFlags: 0
