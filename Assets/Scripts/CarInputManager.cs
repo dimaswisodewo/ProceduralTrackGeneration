@@ -90,7 +90,7 @@ public class CarInputManager : MonoBehaviour {
             keyboardDrift = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
             keyboardReset = keyboard.rKey.wasPressedThisFrame;
             keyboardReposition = keyboard.tKey.wasPressedThisFrame;
-            keyboardToggleCamera = keyboard.fKey.wasPressedThisFrame;
+            keyboardToggleCamera = keyboard.cKey.wasPressedThisFrame;
             keyboardTopCamera = keyboard.digit1Key.wasPressedThisFrame;
             keyboardBehindCamera = keyboard.digit2Key.wasPressedThisFrame;
             keyboardDriverCamera = keyboard.digit3Key.wasPressedThisFrame;
@@ -124,7 +124,7 @@ public class CarInputManager : MonoBehaviour {
         keyboardDrift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         keyboardReset = Input.GetKeyDown(KeyCode.R);
         keyboardReposition = Input.GetKeyDown(KeyCode.T);
-        keyboardToggleCamera = Input.GetKeyDown(KeyCode.F);
+        keyboardToggleCamera = Input.GetKeyDown(KeyCode.C);
         keyboardTopCamera = Input.GetKeyDown(KeyCode.Alpha1);
         keyboardBehindCamera = Input.GetKeyDown(KeyCode.Alpha2);
         keyboardDriverCamera = Input.GetKeyDown(KeyCode.Alpha3);

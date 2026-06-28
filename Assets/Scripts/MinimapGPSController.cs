@@ -25,6 +25,7 @@ public class MinimapGPSController : MonoBehaviour {
     private GameObject minimapPanel;
     private GameObject destIconObj;
     private RectTransform destIconRect;
+    private RectTransform playerIconRect;
     private Image destIconImage;
 
     // GPS Navigation Path
@@ -198,12 +199,12 @@ public class MinimapGPSController : MonoBehaviour {
             new Vector2(0.5f, 0.5f)
         );
 
-        // 4. Player Indicator in Center of Minimap (Simple Circle)
+        // 4. Player Indicator in Center of Minimap (Directional Arrow)
         GameObject playerIconObj = new GameObject("PlayerIcon");
         playerIconObj.layer = 5;
         playerIconObj.transform.SetParent(minimapPanel.transform, false); // Outside mask so it sits on top
 
-        RectTransform playerIconRect = playerIconObj.AddComponent<RectTransform>();
+        playerIconRect = playerIconObj.AddComponent<RectTransform>();
         playerIconRect.anchorMin = new Vector2(0.5f, 0.5f);
         playerIconRect.anchorMax = new Vector2(0.5f, 0.5f);
         playerIconRect.pivot = new Vector2(0.5f, 0.5f);
@@ -211,7 +212,12 @@ public class MinimapGPSController : MonoBehaviour {
         playerIconRect.anchoredPosition = Vector2.zero;
 
         Image playerIconImage = playerIconObj.AddComponent<Image>();
-        playerIconImage.sprite = circle64Sprite;
+        Sprite triangleSprite = CreateRegisteredSprite(
+            CreateTriangleTexture(64),
+            new Rect(0, 0, 64, 64),
+            new Vector2(0.5f, 0.5f)
+        );
+        playerIconImage.sprite = triangleSprite;
         playerIconImage.color = new Color(0.55f, 0.85f, 0.65f, 1f); // Soft pastel green player icon
 
         // Add a subtle drop shadow to player icon
@@ -267,12 +273,25 @@ public class MinimapGPSController : MonoBehaviour {
         if (minimapCamera == null || carTransform == null) return;
         // Follow player from above. Center on player.
         minimapCamera.transform.position = new Vector3(carTransform.position.x, 100f, carTransform.position.z);
-        // Rotate the camera around Y to match the car's heading.
-        minimapCamera.transform.rotation = Quaternion.Euler(90f, carTransform.eulerAngles.y, 0f);
+        
+        // Match minimap camera rotation with main camera's yaw so it rotates in sync or stays fixed when main camera is fixed.
+        float targetYaw = carTransform.eulerAngles.y;
+        if (CameraFollow.Instance != null) {
+            targetYaw = CameraFollow.Instance.transform.eulerAngles.y;
+        }
+        
+        // Rotate the camera around Y to match the view's heading.
+        minimapCamera.transform.rotation = Quaternion.Euler(90f, targetYaw, 0f);
     }
 
     private void Update() {
         if (carTransform == null) return;
+
+        // Update player icon rotation to match car's direction relative to minimap camera
+        if (minimapCamera != null && playerIconRect != null) {
+            float relativeYaw = carTransform.eulerAngles.y - minimapCamera.transform.eulerAngles.y;
+            playerIconRect.localRotation = Quaternion.Euler(0f, 0f, -relativeYaw);
+        }
 
         // 1. Query target and run GPS calculations
         PackageDeliverySystem deliverySystem = PackageDeliverySystem.Instance;

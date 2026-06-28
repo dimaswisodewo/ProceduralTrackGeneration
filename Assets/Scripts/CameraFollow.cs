@@ -31,13 +31,31 @@ public class CameraFollow : MonoBehaviour {
 
     [Header("Damping (Smoothness)")]
     public float positionDamping = 5f;
-    public float rotationDamping = 3f;
+    public float rotationDamping = 5f;
 
     [Header("Speed Effects")]
     public bool enableSpeedFOV = true;
     public float minFOV = 60f;
     public float maxFOV = 78f;
     public float maxSpeedForFOV = 25f; // Speed at which FOV is maximized (m/s)
+
+    [Header("Comfort & Motion Sickness Settings")]
+    [Tooltip("If true, the Top POV camera will use comfort settings (smooth damping, no speed FOV, reduced screen shake).")]
+    public bool topCameraComfortMode = true;
+
+    [Tooltip("If true, the Behind POV camera will use comfort settings instead of standard follow behavior.")]
+    public bool behindCameraComfortMode = false;
+
+    [Tooltip("If true, locks the camera's yaw rotation (no spinning when car turns/spins) to prevent motion sickness.")]
+    public bool lockYaw = false;
+
+    [Tooltip("Smooth position damping used in Comfort Mode.")]
+    public float comfortPositionDamping = 3.5f;
+
+    [Tooltip("Smooth rotation damping used in Comfort Mode.")]
+    public float comfortRotationDamping = 4.0f;
+
+    private float initialTargetYaw = 0f;
 
     public static CameraFollow Instance { get; private set; }
 
@@ -154,6 +172,20 @@ public class CameraFollow : MonoBehaviour {
             }
         }
 
+        // Check keyboard hotkeys for toggling yaw lock
+#if ENABLE_INPUT_SYSTEM
+        var keyboard = UnityEngine.InputSystem.Keyboard.current;
+        if (keyboard != null) {
+            if (keyboard.vKey.wasPressedThisFrame) {
+                ToggleLockYaw();
+            }
+        }
+#else
+        if (Input.GetKeyDown(KeyCode.V)) {
+            ToggleLockYaw();
+        }
+#endif
+
         // Cinematic Orbit Camera on GameOver / Victory State
         if (PackageDeliverySystem.Instance != null && PackageDeliverySystem.Instance.currentState == PackageDeliverySystem.DeliveryState.GameOver) {
             HandleGameOverOrbit();
@@ -164,8 +196,35 @@ public class CameraFollow : MonoBehaviour {
         Vector3 targetPos = GetInterpolatedTargetPosition();
         float targetYawAngle = GetInterpolatedTargetYaw();
 
-        // Lerp current yaw towards target's heading yaw (frame-rate independent)
-        float rotT = 1f - Mathf.Exp(-rotationDamping * Time.deltaTime);
+        if (lockYaw) {
+            targetYawAngle = initialTargetYaw;
+        } else {
+            // If comfort mode is active, align to velocity (movement direction) instead of target heading.
+            // This keeps the camera orientation aligned with the path of travel and prevents dizzying screen swings during drifts/slides.
+            if (IsComfortModeActive() && targetRigidbody != null) {
+                Vector3 velocity = targetRigidbody.linearVelocity;
+                velocity.y = 0f;
+                if (velocity.sqrMagnitude > 1f) {
+                    float rawVelocityYaw = Mathf.Atan2(velocity.x, velocity.z) * Mathf.Rad2Deg;
+                    
+                    // Align to velocity but handle reversing to prevent instant 180-degree flips
+                    Vector3 targetForward = target.forward;
+                    targetForward.y = 0f;
+                    targetForward.Normalize();
+                    
+                    float dot = Vector3.Dot(velocity.normalized, targetForward);
+                    if (dot < 0f) {
+                        targetYawAngle = rawVelocityYaw + 180f;
+                    } else {
+                        targetYawAngle = rawVelocityYaw;
+                    }
+                }
+            }
+        }
+
+        // Lerp current yaw towards targetYawAngle (frame-rate independent)
+        float rotDamp = IsComfortModeActive() ? comfortRotationDamping : rotationDamping;
+        float rotT = 1f - Mathf.Exp(-rotDamp * Time.deltaTime);
         currentYaw = Mathf.LerpAngle(currentYaw, targetYawAngle, rotT);
 
         // Position the camera directly behind the target using the smoothed yaw
@@ -175,14 +234,19 @@ public class CameraFollow : MonoBehaviour {
         targetPosition.y = targetPos.y + height;
 
         // 2. Smoothly Move Camera Position without contaminating follow position with shakeOffset (frame-rate independent)
-        float posT = 1f - Mathf.Exp(-positionDamping * Time.deltaTime);
+        float posDamp = IsComfortModeActive() ? comfortPositionDamping : positionDamping;
+        float posT = 1f - Mathf.Exp(-posDamp * Time.deltaTime);
         currentFollowPosition = Vector3.Lerp(currentFollowPosition, targetPosition, posT);
-        transform.position = currentFollowPosition + shakeOffset;
+        
+        Vector3 finalShakeOffset = IsComfortModeActive() ? (shakeOffset * 0.1f) : shakeOffset;
+        transform.position = currentFollowPosition + finalShakeOffset;
 
         // 3. Look at Target/Apply rotation and apply rotational shake
         Vector3 lookAtTarget = targetPos + lookAtOffset;
         transform.LookAt(lookAtTarget);
-        transform.rotation *= Quaternion.Euler(shakeRotationOffset);
+        
+        Vector3 finalShakeRot = IsComfortModeActive() ? (shakeRotationOffset * 0.1f) : shakeRotationOffset;
+        transform.rotation *= Quaternion.Euler(finalShakeRot);
 
         // 4. Handle Speed-based FOV Zooming with offsets
         UpdateCameraFOV();
@@ -194,6 +258,7 @@ public class CameraFollow : MonoBehaviour {
             targetLocalRotation = Quaternion.Inverse(targetRigidbody.transform.rotation) * target.rotation;
         }
         currentYaw = target.eulerAngles.y;
+        initialTargetYaw = target.eulerAngles.y;
         currentFollowPosition = transform.position;
         isInitialized = true;
     }
@@ -234,12 +299,32 @@ public class CameraFollow : MonoBehaviour {
         if (cam == null) return;
 
         float targetFOV = minFOV;
-        if (enableSpeedFOV) {
+        bool comfort = IsComfortModeActive();
+        if (enableSpeedFOV && !comfort) {
             float speed = targetRigidbody != null ? targetRigidbody.linearVelocity.magnitude : 0f;
             float speedRatio = Mathf.Clamp01(speed / maxSpeedForFOV);
             targetFOV = Mathf.Lerp(minFOV, maxFOV, speedRatio);
         }
-        cam.fieldOfView = targetFOV + boostFOVOffset + shockZoomOffset;
+        
+        float boost = comfort ? 0f : boostFOVOffset;
+        float shock = comfort ? 0f : shockZoomOffset;
+        cam.fieldOfView = targetFOV + boost + shock;
+    }
+
+    public bool IsComfortModeActive() {
+        return (currentPOV == CameraPOV.Top) ? topCameraComfortMode : behindCameraComfortMode;
+    }
+
+    public void ToggleLockYaw() {
+        lockYaw = !lockYaw;
+        ShowCameraModeNotification(lockYaw ? "Camera Rotation: LOCKED" : "Camera Rotation: FREE");
+    }
+
+    private void ShowCameraModeNotification(string message) {
+        Debug.Log(message);
+        if (UIManager.Instance != null) {
+            UIManager.Instance.FlashNotificationText(message);
+        }
     }
 
     public void ResetCamera() {

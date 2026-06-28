@@ -183,7 +183,7 @@ public class UIManager : MonoBehaviour {
 
         // Resolve Reposition Help Text
         if (repositionHelpText == null) {
-            repositionHelpText = GetOrCreateUIText("RepositionHelpText", new Vector2(-25f, 25f), new Vector2(400f, 30f), 12, new Color(0.85f, 0.85f, 0.85f, 0.85f), TextAnchor.LowerRight);
+            repositionHelpText = GetOrCreateUIText("RepositionHelpText", new Vector2(-25f, 25f), new Vector2(600f, 30f), 12, new Color(0.85f, 0.85f, 0.85f, 0.85f), TextAnchor.LowerRight);
             if (repositionHelpText != null) {
                 RectTransform rect = repositionHelpText.GetComponent<RectTransform>();
                 rect.anchorMin = new Vector2(1f, 0f);
@@ -193,7 +193,7 @@ public class UIManager : MonoBehaviour {
             }
         }
         if (repositionHelpText != null) {
-            repositionHelpText.text = "If you get stuck, press T to reposition your car";
+            repositionHelpText.text = "T: Reposition | C: Toggle Camera | V: Lock Yaw | R: Restart";
         }
     }
 
@@ -397,6 +397,32 @@ public class UIManager : MonoBehaviour {
             .OnComplete(() => {
                 successTextObject.transform.DOScale(1.0f, 0.15f)
                     .SetDelay(3.5f)
+                    .OnComplete(() => {
+                        successTextTween = successText.DOFade(0f, 0.4f);
+                        successTextScaleTween = successTextObject.transform.DOScale(0.8f, 0.4f)
+                            .OnComplete(() => successTextObject.SetActive(false));
+                    });
+            });
+    }
+
+    public void FlashNotificationText(string msg) {
+        if (successTextObject == null || successText == null) return;
+
+        if (successTextTween != null) successTextTween.Kill();
+        if (successTextScaleTween != null) successTextScaleTween.Kill();
+
+        successText.text = msg;
+        successTextObject.SetActive(true);
+
+        Color c = new Color(0.4f, 0.75f, 1f); // Smooth light blue notification color
+        successText.color = c;
+        successTextObject.transform.localScale = Vector3.zero;
+
+        successTextScaleTween = successTextObject.transform.DOScale(1.2f, 0.2f)
+            .SetEase(Ease.OutBack)
+            .OnComplete(() => {
+                successTextObject.transform.DOScale(1.0f, 0.15f)
+                    .SetDelay(1.5f)
                     .OnComplete(() => {
                         successTextTween = successText.DOFade(0f, 0.4f);
                         successTextScaleTween = successTextObject.transform.DOScale(0.8f, 0.4f)

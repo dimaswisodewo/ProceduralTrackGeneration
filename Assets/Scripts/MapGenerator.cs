@@ -806,30 +806,43 @@ public class MapGenerator : MonoBehaviour {
         if (!generateBuildings) return;
 
         Shader buildingShader = Shader.Find("Universal Render Pipeline/Lit");
-        if (fillerPrefab != null) {
-            Renderer r = fillerPrefab.GetComponent<Renderer>();
-            if (r == null) r = fillerPrefab.GetComponentInChildren<Renderer>();
-            if (r != null && r.sharedMaterial != null) {
-                buildingShader = r.sharedMaterial.shader;
-            }
-        } else if (straightPrefab != null) {
+        Color roadColor = new Color(0.25f, 0.25f, 0.25f); // Default dark grey road color fallback
+        Material roadMat = null;
+
+        if (straightPrefab != null) {
             Renderer r = straightPrefab.GetComponent<Renderer>();
             if (r == null) r = straightPrefab.GetComponentInChildren<Renderer>();
             if (r != null && r.sharedMaterial != null) {
                 buildingShader = r.sharedMaterial.shader;
+                roadMat = r.sharedMaterial;
+            }
+        } else if (fillerPrefab != null) {
+            Renderer r = fillerPrefab.GetComponent<Renderer>();
+            if (r == null) r = fillerPrefab.GetComponentInChildren<Renderer>();
+            if (r != null && r.sharedMaterial != null) {
+                buildingShader = r.sharedMaterial.shader;
+                roadMat = r.sharedMaterial;
             }
         }
 
-        Color[] buildingColors = new Color[] {
-            new Color(0.95f, 0.95f, 0.93f), // Warm White / Alabaster
-            new Color(0.85f, 0.87f, 0.9f),  // Cool Light Grey
-            new Color(0.98f, 0.98f, 0.98f), // Clean White
-            new Color(0.96f, 0.95f, 0.92f), // Soft Cream
-            new Color(0.8f, 0.82f, 0.85f),  // Light Slate/Silver Grey
-            new Color(0.75f, 0.76f, 0.78f), // Medium Light Grey
-            new Color(0.88f, 0.87f, 0.85f), // Warm Pale Grey
-            new Color(0.91f, 0.91f, 0.93f)  // Pastel Pearl Grey
-        };
+        // Extract color from road material if possible
+        if (roadMat != null) {
+            if (roadMat.HasProperty("_BaseColor")) {
+                roadColor = roadMat.GetColor("_BaseColor");
+            } else if (roadMat.HasProperty("_Color")) {
+                roadColor = roadMat.color;
+            }
+        }
+
+        // Generate building colors slightly darker than the road color (e.g. 75% to 95% of road brightness)
+        Color[] buildingColors = new Color[5];
+        for (int i = 0; i < buildingColors.Length; i++) {
+            float factor = 0.75f + (i * 0.05f); // 0.75f, 0.80f, 0.85f, 0.90f, 0.95f
+            float r = Mathf.Max(0.05f, roadColor.r * factor);
+            float g = Mathf.Max(0.05f, roadColor.g * factor);
+            float b = Mathf.Max(0.05f, roadColor.b * factor);
+            buildingColors[i] = new Color(r, g, b, 1.0f);
+        }
 
         for (int i = 0; i < buildingColors.Length; i++) {
             Material mat = new Material(buildingShader);
