@@ -38,6 +38,7 @@ public class SoundManager : MonoBehaviour {
     private AudioSource driftSource;
     private AudioSource sfxSource;
     private AudioSource dialogueSource;
+    private AudioSource popSource;
 
     private Coroutine bgmCrossfadeCoroutine;
 
@@ -79,6 +80,11 @@ public class SoundManager : MonoBehaviour {
         dialogueSource.loop = false;
         dialogueSource.playOnAwake = false;
         dialogueSource.clip = sfxDialogue;
+
+        // Create pop source
+        popSource = gameObject.AddComponent<AudioSource>();
+        popSource.loop = false;
+        popSource.playOnAwake = false;
     }
 
     // --- BGM Controls ---
@@ -226,14 +232,31 @@ public class SoundManager : MonoBehaviour {
         }
     }
 
-    public void UpdateEngineSFX(float speedRatio) {
+    public void UpdateEngineSFX(float rpm, float load, int gear) {
         if (engineSource == null || !engineSource.isPlaying) return;
 
-        // Modulate pitch based on speed
-        engineSource.pitch = Mathf.Lerp(0.8f, 2.2f, speedRatio);
+        // Pitch is determined by simulated RPM (rpm is 0 to 1)
+        float basePitch = Mathf.Lerp(0.65f, 2.3f, rpm);
+
+        // Make pitch slightly higher in higher gears to sound faster/more intense
+        float gearPitchModifier = 1f + (gear - 1) * 0.04f;
+        engineSource.pitch = basePitch * gearPitchModifier;
+
+        // Volume increases as RPM and gear goes up
+        float baseVolume = Mathf.Lerp(0.28f, 0.85f, rpm);
         
-        // Modulate volume based on speed/idle state
-        engineSource.volume = Mathf.Lerp(0.3f, 0.8f, speedRatio);
+        // Increase volume slightly in higher gears
+        float gearVolumeModifier = 1f + (gear - 1) * 0.05f;
+        float loadVolumeMultiplier = Mathf.Lerp(0.65f, 1.0f, load);
+        
+        engineSource.volume = baseVolume * gearVolumeModifier * loadVolumeMultiplier;
+    }
+
+    public void PlayGearShiftPop() {
+        if (sfxHitObstacle != null && popSource != null) {
+            popSource.pitch = Random.Range(1.4f, 1.9f);
+            popSource.PlayOneShot(sfxHitObstacle, Random.Range(0.06f, 0.12f));
+        }
     }
 
     public void SetDriftSFXActive(bool active) {

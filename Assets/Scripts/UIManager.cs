@@ -193,7 +193,7 @@ public class UIManager : MonoBehaviour {
             }
         }
         if (repositionHelpText != null) {
-            repositionHelpText.text = "T: Reposition | C: Toggle Camera | V: Lock Yaw | R: Restart";
+            repositionHelpText.text = "Shift: Drift | T: Reposition | C: Toggle Camera | V: Lock Yaw | R: Restart";
         }
     }
 

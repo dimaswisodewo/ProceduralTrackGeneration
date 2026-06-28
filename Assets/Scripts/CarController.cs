@@ -123,6 +123,19 @@ public class CarController : MonoBehaviour {
     private float stunTimer = 0f;
     private Vector3 originalBodyScale;
 
+    [Header("Engine Sound Simulation Settings")]
+    public float idlePitch = 0.65f;
+    public float maxPitch = 2.3f;
+    public float gearShiftDuration = 0.18f;
+    public float limiterBounceFrequency = 22f;
+    public float limiterBounceMagnitude = 0.06f;
+
+    private float engineRPM = 0f; // 0 (idle) to 1 (redline)
+    private int currentGear = 1;
+    private float gearShiftTimer = 0f;
+    private float engineLoad = 0f;
+    private float limiterTimer = 0f;
+
     private void Start() {
         gameObject.tag = "Player";
         rb = GetComponent<Rigidbody>();
@@ -412,24 +425,107 @@ public class CarController : MonoBehaviour {
         // Update damage fire/smoke effects
         UpdateDamageEffects();
 
-        // Update engine and drift loop SFX
-        if (SoundManager.Instance != null) {
-            float speed = rb != null ? rb.linearVelocity.magnitude : 0f;
-            float speedRatio = Mathf.Clamp01(speed / maxSpeed);
+        // Update engine sound simulation
+        UpdateEngineSimulation();
+    }
 
-            bool isGameplayActive = PackageDeliverySystem.Instance != null &&
-                (PackageDeliverySystem.Instance.currentState == PackageDeliverySystem.DeliveryState.CollectingStamps ||
-                 PackageDeliverySystem.Instance.currentState == PackageDeliverySystem.DeliveryState.HeadingToFinalDestination);
+    private void UpdateEngineSimulation() {
+        if (SoundManager.Instance == null) return;
 
-            if (isGameplayActive) {
-                SoundManager.Instance.SetEngineSFXActive(true);
-                SoundManager.Instance.UpdateEngineSFX(speedRatio);
-                SoundManager.Instance.SetDriftSFXActive(isDrifting);
-            } else {
-                SoundManager.Instance.SetEngineSFXActive(false);
-                SoundManager.Instance.SetDriftSFXActive(false);
+        bool isGameplayActive = PackageDeliverySystem.Instance != null &&
+            (PackageDeliverySystem.Instance.currentState == PackageDeliverySystem.DeliveryState.CollectingStamps ||
+             PackageDeliverySystem.Instance.currentState == PackageDeliverySystem.DeliveryState.HeadingToFinalDestination);
+
+        if (!isGameplayActive) {
+            SoundManager.Instance.SetEngineSFXActive(false);
+            SoundManager.Instance.SetDriftSFXActive(false);
+            // Reset simulation values
+            engineRPM = 0f;
+            currentGear = 1;
+            gearShiftTimer = 0f;
+            engineLoad = 0f;
+            return;
+        }
+
+        SoundManager.Instance.SetEngineSFXActive(true);
+
+        float speed = rb != null ? rb.linearVelocity.magnitude : 0f;
+        float speedRatio = Mathf.Clamp01(speed / maxSpeed);
+        float throttle = CarInputManager.Instance != null ? CarInputManager.Instance.Throttle : 0f;
+
+        Vector3 localVelocity = rb != null ? transform.InverseTransformDirection(rb.linearVelocity) : Vector3.zero;
+        bool isReversing = localVelocity.z < -0.5f;
+
+        // 1. Gear Shifting Logic
+        float[] gearUpThresholds = { 0.22f, 0.42f, 0.65f, 0.85f, 1.10f };
+        float[] gearDownThresholds = { 0.0f, 0.16f, 0.36f, 0.58f, 0.78f };
+
+        if (isReversing) {
+            currentGear = 1;
+            gearShiftTimer = 0f;
+        } else if (gearShiftTimer > 0f) {
+            gearShiftTimer -= Time.deltaTime;
+        } else {
+            // Upshift check
+            if (currentGear < 5 && speedRatio > gearUpThresholds[currentGear - 1]) {
+                currentGear++;
+                gearShiftTimer = gearShiftDuration;
+                SoundManager.Instance.PlayGearShiftPop();
+            }
+            // Downshift check
+            else if (currentGear > 1 && speedRatio < gearDownThresholds[currentGear - 1]) {
+                currentGear--;
+                gearShiftTimer = gearShiftDuration * 0.75f;
             }
         }
+
+        // 2. RPM Calculation
+        float targetRPM = 0f;
+        if (gearShiftTimer > 0f) {
+            // RPM drops temporarily during gear change (clutch in)
+            targetRPM = 0.35f;
+        } else {
+            // Scale RPM within the current gear speed range
+            float gearMinSpeed = currentGear == 1 ? 0f : gearUpThresholds[currentGear - 2];
+            float gearMaxSpeed = gearUpThresholds[currentGear - 1];
+            float gearSpeedRange = gearMaxSpeed - gearMinSpeed;
+            float gearProgress = (speedRatio - gearMinSpeed) / (gearSpeedRange > 0.01f ? gearSpeedRange : 1f);
+            gearProgress = Mathf.Clamp01(gearProgress);
+
+            float speedRPM = Mathf.Lerp(0.15f, 0.85f, gearProgress);
+            
+            // Throttle helps rev the engine up even at low speed
+            float throttleRPMBoost = throttle * Mathf.Clamp01(0.4f - speedRPM);
+            targetRPM = speedRPM + throttleRPMBoost;
+
+            // 3. Wheel Spin / Drift boost
+            if (isDrifting) {
+                targetRPM = Mathf.Max(targetRPM, Mathf.Lerp(0.85f, 1.00f, throttle));
+            }
+        }
+
+        // Smooth RPM changes
+        float rpmLerpSpeed = isDrifting ? 15f : 8f;
+        if (gearShiftTimer > 0f) rpmLerpSpeed = 22f; // Quick drop during shift
+        engineRPM = Mathf.Lerp(engineRPM, targetRPM, Time.deltaTime * rpmLerpSpeed);
+        engineRPM = Mathf.Clamp01(engineRPM);
+
+        // 4. Rev Limiter Bounce when redlining
+        float limiterBounce = 0f;
+        if (engineRPM > 0.96f) {
+            limiterTimer += Time.deltaTime * limiterBounceFrequency;
+            limiterBounce = Mathf.PingPong(limiterTimer, 1f) * limiterBounceMagnitude;
+            engineRPM -= limiterBounce;
+        }
+
+        // 5. Engine Load (for volume modulation)
+        float targetLoad = throttle;
+        if (gearShiftTimer > 0f) targetLoad = 0f; // No load during gear change
+        engineLoad = Mathf.Lerp(engineLoad, targetLoad, Time.deltaTime * 12f);
+
+        // 6. Send values to SoundManager
+        SoundManager.Instance.UpdateEngineSFX(engineRPM, engineLoad, currentGear);
+        SoundManager.Instance.SetDriftSFXActive(isDrifting);
     }
 
     private void ApplyMotorTorque(float torqueInput) {
@@ -680,6 +776,12 @@ public class CarController : MonoBehaviour {
         lastDriftActive = false;
         isDrifting = false;
 
+        // Reset engine sound simulation states on respawn
+        engineRPM = 0f;
+        currentGear = 1;
+        gearShiftTimer = 0f;
+        engineLoad = 0f;
+
         Physics.SyncTransforms();
 
         if (CameraFollow.Instance != null) {
@@ -787,6 +889,12 @@ public class CarController : MonoBehaviour {
         lastHandbrakeActive = false;
         lastDriftActive = false;
         isDrifting = false;
+
+        // Reset engine sound simulation states on reposition
+        engineRPM = 0f;
+        currentGear = 1;
+        gearShiftTimer = 0f;
+        engineLoad = 0f;
 
         Physics.SyncTransforms();
 
