@@ -169,12 +169,12 @@ public class PackageDeliverySystem : MonoBehaviour {
         if (currentState == DeliveryState.CollectingStamps) {
             int collected = collectedStampSpots.Count;
             int total = stampSpots.Count;
-            string text = $"OBJECTIVE: Collect director stamps to validate evidence. ({collected}/{total} collected)";
-            Color color = new Color(0.5f, 0.75f, 0.95f); // Pastel Sky Blue
+            string text = $"OBJECTIVE: Collect stamps from The Authorities to validate evidence. ({collected}/{total} collected)";
+            Color color = new Color(0.35f, 0.78f, 1.0f); // Vibrant Pastel Blue
             UIManager.Instance.SetObjectiveText(text, color);
         } else if (currentState == DeliveryState.HeadingToFinalDestination) {
             string text = "OBJECTIVE: Bring the bulletproof evidence to the Supreme Court!";
-            Color color = new Color(0.95f, 0.65f, 0.45f); // Pastel Orange/Peach
+            Color color = new Color(1.0f, 0.68f, 0.35f); // Vibrant Pastel Gold/Orange
             UIManager.Instance.SetObjectiveText(text, color);
         }
     }
@@ -236,14 +236,14 @@ public class PackageDeliverySystem : MonoBehaviour {
                     }
                     if (UIManager.Instance != null) {
                         string nextText = "OBJECTIVE: Bring the bulletproof evidence to the Supreme Court!";
-                        Color nextColor = new Color(0.95f, 0.65f, 0.45f); // Pastel Orange/Peach
+                        Color nextColor = new Color(1.0f, 0.68f, 0.35f); // Vibrant Pastel Gold/Orange
                         UIManager.Instance.FlashObjectiveSuccessText("EVIDENCE IS BULLETPROOF! Head to the Supreme Court!", nextText, nextColor);
                     }
                 } else {
                     UpdatePointerDirection();
                     if (UIManager.Instance != null) {
-                        string nextText = $"OBJECTIVE: Collect director stamps to validate evidence. ({collected}/{total} collected)";
-                        Color nextColor = new Color(0.5f, 0.75f, 0.95f); // Pastel Sky Blue
+                        string nextText = $"OBJECTIVE: Collect stamps from The Authorities to validate evidence. ({collected}/{total} collected)";
+                        Color nextColor = new Color(0.35f, 0.78f, 1.0f); // Vibrant Pastel Blue
                         UIManager.Instance.FlashObjectiveSuccessText($"EVIDENCE STAMPED! ({collected}/{total} validated)", nextText, nextColor);
                     }
                 }

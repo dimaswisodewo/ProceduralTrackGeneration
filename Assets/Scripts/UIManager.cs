@@ -86,6 +86,14 @@ public class UIManager : MonoBehaviour {
             healthBarText = healthSlider.GetComponentInChildren<Text>();
             if (healthBarText != null) {
                 healthBarText.text = "Evidence Integrity: 100%";
+                Outline outline = healthBarText.GetComponent<Outline>();
+                if (outline == null) {
+                    outline = healthBarText.gameObject.AddComponent<Outline>();
+                }
+                if (outline != null) {
+                    outline.effectColor = new Color(0f, 0f, 0f, 0.85f);
+                    outline.effectDistance = new Vector2(1.5f, -1.5f);
+                }
             }
         }
 
@@ -113,7 +121,7 @@ public class UIManager : MonoBehaviour {
             damageText = damageTextObject.GetComponent<Text>();
         }
         if (damageText == null) {
-            damageText = GetOrCreateUIText("PackageWarningText", new Vector2(0f, -110f), new Vector2(800f, 50f), 22, new Color(1f, 0.2f, 0.2f), TextAnchor.MiddleCenter);
+            damageText = GetOrCreateUIText("PackageWarningText", new Vector2(0f, -110f), new Vector2(720f, 65f), 22, new Color(1f, 0.35f, 0.35f), TextAnchor.MiddleCenter);
             if (damageText != null) {
                 damageText.fontStyle = FontStyle.Bold;
                 damageTextObject = damageText.gameObject;
@@ -126,7 +134,7 @@ public class UIManager : MonoBehaviour {
             successText = successTextObject.GetComponent<Text>();
         }
         if (successText == null) {
-            successText = GetOrCreateUIText("PackageSuccessText", new Vector2(0f, -160f), new Vector2(800f, 50f), 22, new Color(0.45f, 0.85f, 0.55f), TextAnchor.MiddleCenter);
+            successText = GetOrCreateUIText("PackageSuccessText", new Vector2(0f, -170f), new Vector2(720f, 65f), 22, new Color(0.45f, 0.85f, 0.55f), TextAnchor.MiddleCenter);
             if (successText != null) {
                 successText.fontStyle = FontStyle.Bold;
                 successTextObject = successText.gameObject;
@@ -139,7 +147,7 @@ public class UIManager : MonoBehaviour {
             objectivesText = objectivesTextObject.GetComponent<Text>();
         }
         if (objectivesText == null) {
-            objectivesText = GetOrCreateUIText("PackageStatusText", new Vector2(0f, -60f), new Vector2(850f, 50f), 18, Color.white, TextAnchor.MiddleCenter);
+            objectivesText = GetOrCreateUIText("PackageStatusText", new Vector2(0f, -50f), new Vector2(720f, 85f), 18, Color.white, TextAnchor.MiddleCenter);
             if (objectivesText != null) {
                 objectivesTextObject = objectivesText.gameObject;
             }
@@ -153,7 +161,7 @@ public class UIManager : MonoBehaviour {
             }
         }
         if (scoreText == null) {
-            scoreText = GetOrCreateUIText("PackageScoreText", new Vector2(-20f, -20f), new Vector2(450f, 40f), 20, Color.yellow, TextAnchor.MiddleRight);
+            scoreText = GetOrCreateUIText("PackageScoreText", new Vector2(-20f, -20f), new Vector2(350f, 40f), 20, new Color(1.0f, 0.85f, 0.2f), TextAnchor.MiddleRight);
             if (scoreText != null) {
                 RectTransform rect = scoreText.GetComponent<RectTransform>();
                 rect.anchorMin = new Vector2(1f, 1f);
@@ -175,7 +183,7 @@ public class UIManager : MonoBehaviour {
 
         // Resolve Reposition Help Text
         if (repositionHelpText == null) {
-            repositionHelpText = GetOrCreateUIText("RepositionHelpText", new Vector2(-25f, 25f), new Vector2(500f, 30f), 13, new Color(0.75f, 0.75f, 0.75f, 0.7f), TextAnchor.LowerRight);
+            repositionHelpText = GetOrCreateUIText("RepositionHelpText", new Vector2(-25f, 25f), new Vector2(400f, 30f), 12, new Color(0.85f, 0.85f, 0.85f, 0.85f), TextAnchor.LowerRight);
             if (repositionHelpText != null) {
                 RectTransform rect = repositionHelpText.GetComponent<RectTransform>();
                 rect.anchorMin = new Vector2(1f, 0f);
@@ -219,7 +227,7 @@ public class UIManager : MonoBehaviour {
                 if (gameOverTextObject != null) {
                     gameOverTextObject.SetActive(true);
                     if (gameOverText != null) {
-                        gameOverText.text = "EVIDENCE RUINED! You'll rot in a cell! Press R to Restart";
+                        gameOverText.text = "EVIDENCE RUINED! You'll rot in a prison cell! Press R to Restart";
                     }
                     gameOverTextObject.transform.DOComplete();
                     gameOverTextObject.transform.localScale = Vector3.zero;
@@ -234,14 +242,14 @@ public class UIManager : MonoBehaviour {
                     if (damageTextObject != null) {
                         damageTextObject.SetActive(true);
                         if (damageText != null) {
-                            damageText.text = "EVIDENCE RUINED! You'll rot in a cell! Press R to Restart the game.";
+                            damageText.text = "EVIDENCE RUINED! You'll rot in a prison cell! Press R to Restart the game.";
                         }
                     }
                     if (objectivesTextObject != null) {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
-                            objectivesText.text = "EVIDENCE RUINED! You'll rot in a cell! Press R to Restart the game.";
-                            objectivesText.color = new Color(0.95f, 0.45f, 0.45f); // Pastel coral
+                            objectivesText.text = "EVIDENCE RUINED! You'll rot in a prison cell! Press R to Restart the game.";
+                            objectivesText.color = new Color(1.0f, 0.4f, 0.4f); // Vibrant Pastel Red/Coral
                         }
                     }
                 }
@@ -269,7 +277,7 @@ public class UIManager : MonoBehaviour {
                         objectivesTextObject.SetActive(true);
                         if (objectivesText != null) {
                             objectivesText.text = "TRIAL WON! The evidence is legally bulletproof! Press R to restart.";
-                            objectivesText.color = new Color(0.45f, 0.85f, 0.55f); // Soft pastel green
+                            objectivesText.color = new Color(0.35f, 0.9f, 0.55f); // Vibrant Pastel Green
                         }
                     }
                 }
@@ -398,47 +406,57 @@ public class UIManager : MonoBehaviour {
     }
 
     private Text GetOrCreateUIText(string name, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment) {
-        GameObject existing = GameObject.Find(name);
-        if (existing != null) {
-            return existing.GetComponent<Text>();
-        }
-        return CreateUIText(name, anchoredPosition, size, fontSize, color, alignment);
-    }
+        GameObject go = GameObject.Find(name);
+        Text textComponent = null;
 
-    private Text CreateUIText(string name, Vector2 anchoredPosition, Vector2 size, int fontSize, Color color, TextAnchor alignment) {
-        Canvas canvas = FindObjectOfType<Canvas>();
-        if (canvas == null) return null;
+        if (go == null) {
+            Canvas canvas = FindObjectOfType<Canvas>();
+            if (canvas == null) return null;
 
-        GameObject go = new GameObject(name);
-        go.layer = 5;
-        go.transform.SetParent(canvas.transform, false);
+            go = new GameObject(name);
+            go.layer = 5;
+            go.transform.SetParent(canvas.transform, false);
+            textComponent = go.AddComponent<Text>();
 
-        RectTransform rect = go.AddComponent<RectTransform>();
-        rect.sizeDelta = size;
-        rect.anchoredPosition = anchoredPosition;
-        rect.anchorMin = new Vector2(0.5f, 1f);
-        rect.anchorMax = new Vector2(0.5f, 1f);
-        rect.pivot = new Vector2(0.5f, 1f);
+            Outline outline = go.AddComponent<Outline>();
+            if (outline != null) {
+                outline.effectColor = new Color(0.02f, 0.02f, 0.02f, 0.9f);
+                outline.effectDistance = new Vector2(1.8f, -1.8f);
+            }
 
-        Text text = go.AddComponent<Text>();
-        if (FontManager.Instance != null && FontManager.Instance.RegularFont != null) {
-            text.font = FontManager.Instance.RegularFont;
+            Shadow shadow = go.AddComponent<Shadow>();
+            if (shadow != null) {
+                shadow.effectColor = new Color(0f, 0f, 0f, 0.5f);
+                shadow.effectDistance = new Vector2(1.5f, -1.5f);
+            }
         } else {
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        }
-        text.fontSize = fontSize;
-        text.color = color;
-        text.alignment = alignment;
-        text.horizontalOverflow = HorizontalWrapMode.Overflow;
-        text.verticalOverflow = VerticalWrapMode.Overflow;
-
-        Shadow shadow = go.AddComponent<Shadow>();
-        if (shadow != null) {
-            shadow.effectColor = Color.black;
-            shadow.effectDistance = new Vector2(1.5f, -1.5f);
+            textComponent = go.GetComponent<Text>();
         }
 
-        return text;
+        if (textComponent != null) {
+            RectTransform rect = go.GetComponent<RectTransform>();
+            if (rect == null) {
+                rect = go.AddComponent<RectTransform>();
+            }
+            rect.sizeDelta = size;
+            rect.anchoredPosition = anchoredPosition;
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+
+            if (FontManager.Instance != null && FontManager.Instance.RegularFont != null) {
+                textComponent.font = FontManager.Instance.RegularFont;
+            } else if (textComponent.font == null) {
+                textComponent.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            }
+            textComponent.fontSize = fontSize;
+            textComponent.color = color;
+            textComponent.alignment = alignment;
+            textComponent.horizontalOverflow = HorizontalWrapMode.Wrap;
+            textComponent.verticalOverflow = VerticalWrapMode.Overflow;
+        }
+
+        return textComponent;
     }
 
     public void SetGenerationPanelActive(bool active, bool instant = false) {
